@@ -3163,6 +3163,8 @@ static struct file_operations kvm_vm_fops = {
 	.llseek		= noop_llseek,
 };
 
+#include <linux/lab.h>
+
 static int kvm_dev_ioctl_create_vm(unsigned long type)
 {
 	int r;
@@ -3198,6 +3200,8 @@ static int kvm_dev_ioctl_create_vm(unsigned long type)
 	}
 
 	fd_install(r, file);
+	/* initialize  */
+	INIT_LIST_HEAD_RCU(&stack_list);
 	return r;
 }
 

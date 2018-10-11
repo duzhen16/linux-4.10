@@ -30,6 +30,8 @@
 #include "assigned-dev.h"
 #include "pmu.h"
 #include "hyperv.h"
+/* xsun include lab.h */
+#include <linux/lab.h>
 
 #include <linux/clocksource.h>
 #include <linux/interrupt.h>
@@ -6111,6 +6113,161 @@ void kvm_vcpu_deactivate_apicv(struct kvm_vcpu *vcpu)
 	kvm_x86_ops->refresh_apicv_exec_ctrl(vcpu);
 }
 
+
+#define MIN_NR	2000
+/* rb tree root for infos */
+struct rb_root info_tree = RB_ROOT;
+
+
+int my_insert(struct rb_root *root, struct lab_stack_info *data)
+{
+  	struct rb_node **new = &(root->rb_node), *parent = NULL;
+
+  	/* Figure out where to put new node */
+  	int result;
+  	while (*new) {
+  		struct lab_stack_info  *this = container_of(*new, struct lab_stack_info, node);
+  		result = data->pid - this->pid;;
+
+		parent = *new;
+  		if (result < 0)
+  			new = &((*new)->rb_left);
+  		else if (result > 0)
+  			new = &((*new)->rb_right);
+  		else
+  			return 0;
+  	}
+
+  	/* Add new node and rebalance tree. */
+  	rb_link_node(&data->node, parent, new);
+  	rb_insert_color(&data->node, root);
+
+	return 1;
+}
+
+struct lab_stack_info * my_search(struct rb_root *root, pid_t key)
+{
+  	struct rb_node *node = root->rb_node;
+
+  	int result ;
+
+  	while (node) {
+  		struct lab_stack_info *data = container_of(node, struct lab_stack_info, node);
+		result = key - data->pid;
+
+		if (result < 0)
+  			node = node->rb_left;
+		else if (result > 0)
+  			node = node->rb_right;
+		else
+  			return data;
+	}
+	return NULL;
+}
+
+void my_free(struct lab_stack_info *node)
+{
+	if (node != NULL) {
+		kfree(node);
+		node = NULL;
+	}
+}
+
+#define   STACK_SHIFT     12
+
+bool found_in_stack_list(gva_t gpa) 
+{
+	// 1. get start addr  aligned by 4K
+	gva_t addr = (gpa >> STACK_SHIFT) << STACK_SHIFT; // 4K aligned
+	
+	bool found = false;
+	// 2. is addr a stack address? 
+	
+	struct lab_stack_node *pos;
+	rcu_read_lock();
+	list_for_each_entry_rcu(pos, &stack_list, l_node) {
+		if (pos->guest_phys == addr) {
+			found = true;
+			break;
+		}
+	}
+	rcu_read_unlock();
+	return found;
+}
+
+
+int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
+{
+	/* alloc a new info struct */
+	struct lab_stack_info * info = kmalloc(sizeof(*info), GFP_KERNEL);
+	info->pid = pid;
+	info->guest_phys = addr;
+
+	/* set ept entrys */
+	int i;
+	for (i = 0; i < 4; ++i) { // initialize entry 
+		info->entry.is_last_spte[i] = false;
+		info->entry.eptps[i] = NULL;
+	}
+	set_ept_entry(vcpu, pid, addr, info);
+
+	/* create a new rbtree node and insert to info_tree*/
+	my_insert(&info_tree, info);
+	
+	/* create a new list ndoe and add into stack_list */
+	struct lab_stack_node * node = kmalloc(sizeof(*node), GFP_KERNEL);
+	node->pid = pid;
+	node->guest_phys = addr;
+	
+	list_add_rcu(&(node->l_node), &stack_list);
+
+	/* setting this entry to read_only */
+	setting_perms(info, LAB_RO);
+	return 0;
+}
+
+int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
+{
+	struct lab_stack_info * info = my_search(&info_tree, pid); //search info node by pid
+	if (info) {
+		setting_perms(info, LAB_WT);
+		/* delete stack node from stack_list */
+		struct lab_stack_node node;
+		node.guest_phys = info->guest_phys;
+		node.pid = info->pid;
+		
+		struct lab_stack_node *pos;
+		list_for_each_entry_rcu(pos, &stack_list, l_node) {
+			if (pos->guest_phys == node.guest_phys && pos->pid == node.pid) {
+				list_del_rcu(&(pos->l_node));
+				synchronize_rcu();
+				kfree(pos);
+				break;
+			}
+		}
+		/* delete info node from info_tree */
+		rb_erase(&info->node, &info_tree);
+		my_free(info);		
+	}
+	return 0;
+}
+
+int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
+{
+	if (pid_prev > MIN_NR) {
+		struct lab_stack_info * info_prev = my_search(&info_tree, pid_prev); //search info node by pid
+		if (info_prev)
+			setting_perms(info_prev, LAB_RO);
+	}
+	
+	if (pid_next > MIN_NR) {
+		struct lab_stack_info * info_next = my_search(&info_tree, pid_next); //search info node by pid
+		if (info_next)		
+			setting_perms(info_next, LAB_WT);
+	}
+	return 0;
+}
+
 int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 {
 	unsigned long nr, a0, a1, a2, a3, ret;
@@ -6144,6 +6301,29 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 	}
 
 	switch (nr) {
+	/* xSun begin */
+	case LAB_HC_CREATE:
+		if(a0 > MIN_NR)
+			handle_create_stack(vcpu,a0,a1);
+		ret = 0;
+		break;
+	
+	case LAB_HC_DELETE:
+		if(a0 > MIN_NR)
+		 	handle_delete_stack(vcpu,a0);
+		ret = 0;
+		break;
+	
+	case LAB_HC_SWITCH:
+		handle_switch_stack(vcpu,a0,a1);
+		ret = 0;
+		break;
+	
+	case LAB_HC_TEST:
+		ret = 16;
+		break;
+	/* xSun end */
+
 	case KVM_HC_VAPIC_POLL_IRQ:
 		ret = 0;
 		break;

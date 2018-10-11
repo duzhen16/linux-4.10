@@ -44,6 +44,9 @@
 #include <asm/vmx.h>
 #include <asm/kvm_page_track.h>
 
+/* xSun's functions #include <linux/lab.h> */
+#include <linux/lab.h>
+
 /*
  * When setting this variable to true it enables Two-Dimensional-Paging
  * where the hardware walks 2 page tables:
@@ -3538,6 +3541,10 @@ static int tdp_page_fault(struct kvm_vcpu *vcpu, gva_t gpa, u32 error_code,
 	int write = error_code & PFERR_WRITE_MASK;
 	bool map_writable;
 
+	/* lab: write to other process' stack, it's an attack */
+	if (write != 0 && found_in_stack_list(gpa)) 
+		printk("Lab : attack at %lx\n", gpa);
+
 	MMU_WARN_ON(!VALID_PAGE(vcpu->arch.mmu.root_hpa));
 
 	if (page_fault_handle_page_track(vcpu, error_code, gfn))
@@ -5125,4 +5132,44 @@ void kvm_mmu_module_exit(void)
 	percpu_counter_destroy(&kvm_total_used_mmu_pages);
 	unregister_shrinker(&mmu_shrinker);
 	mmu_audit_disable();
+}
+
+/* rcu list for stack node */
+struct list_head stack_list;
+
+
+int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack_info * info)
+{
+	gfn_t gfn = addr >> PAGE_SHIFT;
+	struct kvm_shadow_walk_iterator iterator;
+	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
+		info->entry.eptps[iterator.level - 1] = iterator.sptep;
+	}
+
+	if (info->entry.eptps[0] != NULL)        //level 1 is the last spte 
+		info->entry.is_last_spte[0] = true;
+	else if (info->entry.eptps[1] != NULL)   //level 2 is the last spte 
+		info->entry.is_last_spte[1] = true;  
+	else if (info->entry.eptps[2] != NULL)   //level 3 is the last spte 
+		info->entry.is_last_spte[2] = true;
+	return 0;
+}
+
+int setting_perms(struct lab_stack_info * data, int perm)
+{
+	
+	int i ;
+	for (i = 0; i < 4; ++i){
+		if(data->entry.is_last_spte[i] == true) {				
+			u64 * p = data->entry.eptps[i];
+			if (perm == LAB_RO) 		 //is_shadow_present_pte(*p) &&
+				*p &= ~PT_WRITABLE_MASK; // clear 0
+			else if (perm == LAB_WT) 	 //is_shadow_present_pte(*p) && 
+				*p |= PT_WRITABLE_MASK;  // set 1
+			// flush remote tlb
+			break;
+		} 	
+	}
+	
+	return 0;
 }
