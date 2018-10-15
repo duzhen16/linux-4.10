@@ -5162,13 +5162,30 @@ int setting_perms(struct lab_stack_info * data, int perm)
 	for (i = 0; i < 4; ++i){
 		if(data->entry.is_last_spte[i] == true) {				
 			u64 * p = data->entry.eptps[i];
-			if (perm == LAB_RO) 		 //is_shadow_present_pte(*p) &&
-				*p &= ~PT_WRITABLE_MASK; // clear 0
-			else if (perm == LAB_WT) 	 //is_shadow_present_pte(*p) && 
-				*p |= PT_WRITABLE_MASK;  // set 1
-			// flush remote tlb
-			break;
+			if (p) {
+				if (perm == LAB_RO) 		 //is_shadow_present_pte(*p) &&
+					*p &= ~PT_WRITABLE_MASK; // clear 0
+				else if (perm == LAB_WT) 	 //is_shadow_present_pte(*p) && 
+					*p |= PT_WRITABLE_MASK;  // set 1
+				// flush remote tlb
+				break;
+			} else
+				print_info_state(data);
 		} 	
 	}
 	return 0;
+}
+
+int print_info_state(struct lab_stack_info * data) {
+	printk("LAB : display lab_stack_info state... ");
+	printk("LAB : pid is %llx, guest addr is %llx", data->pid, data->guest_addr);
+	int i = 0;
+	for (; i < 4; ++i) {
+		printk("LAB : lab_entry.is_last_spte[%d] is %d", i, data->entry.is_last_spte[i]);
+		u64 * p = data->entry.eptps[i];
+		if (p)
+			printk("LAB : lab_entry.eptps[%d] is %llx, * is %llx",i, *p);
+		else
+			printk("LAB : lab_entry.eptps[%d] is null",i);
+	}
 }
