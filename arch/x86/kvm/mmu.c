@@ -5145,7 +5145,7 @@ int print_info_state(struct lab_stack_info * data) {
 		printk("LAB : lab_entry.is_last_spte[%d] is %d", i, data->entry.is_last_spte[i]);
 		u64 * p = data->entry.eptps[i];
 		if (p)
-			printk("LAB : lab_entry.eptps[%d] is %llx, * is %llx",i, *p);
+			printk("LAB : lab_entry.eptps[%d] is %p, * is %llx",i, p, *p);
 		else
 			printk("LAB : lab_entry.eptps[%d] is null",i);
 	}
