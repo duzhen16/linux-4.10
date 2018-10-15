@@ -5155,16 +5155,12 @@ int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
+	int level = 4;
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		info->entry.eptps[iterator.level - 1] = iterator.sptep;
+		level--;
 	}
-
-	if (info->entry.eptps[0] != NULL)        //level 1 is the last spte 
-		info->entry.is_last_spte[0] = true;
-	else if (info->entry.eptps[1] != NULL)   //level 2 is the last spte 
-		info->entry.is_last_spte[1] = true;  
-	else if (info->entry.eptps[2] != NULL)   //level 3 is the last spte 
-		info->entry.is_last_spte[2] = true;
+	info->entry.is_last_spte[level] = true;
 	return 0;
 }
 
