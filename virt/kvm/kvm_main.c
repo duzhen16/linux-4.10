@@ -3202,6 +3202,7 @@ static int kvm_dev_ioctl_create_vm(unsigned long type)
 	fd_install(r, file);
 	/* initialize  */
 	INIT_LIST_HEAD_RCU(&stack_list);
+	printk("LAB : Init list OK\n");
 	return r;
 }
 

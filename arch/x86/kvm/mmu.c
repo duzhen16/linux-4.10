@@ -5170,6 +5170,5 @@ int setting_perms(struct lab_stack_info * data, int perm)
 			break;
 		} 	
 	}
-	
 	return 0;
 }

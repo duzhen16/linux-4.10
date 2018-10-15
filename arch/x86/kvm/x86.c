@@ -6222,7 +6222,7 @@ int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 	list_add_rcu(&(node->l_node), &stack_list);
 
 	/* setting this entry to read_only */
-	setting_perms(info, LAB_RO);
+	setting_perms(info, LAB_WT);
 	return 0;
 }
 
@@ -6257,7 +6257,7 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 	if (pid_prev > MIN_NR) {
 		struct lab_stack_info * info_prev = my_search(&info_tree, pid_prev); //search info node by pid
 		if (info_prev)
-			setting_perms(info_prev, LAB_RO);
+			setting_perms(info_prev, LAB_WT);
 	}
 	
 	if (pid_next > MIN_NR) {
