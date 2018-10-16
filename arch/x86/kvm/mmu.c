@@ -5164,7 +5164,7 @@ int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack
 	return 0;
 }
 
-int setting_perms(struct lab_stack_info * data, int perm)
+int setting_perms(struct kvm_vcpu *vcpu,struct lab_stack_info * data, int perm)
 {
 	
 	int i ;
