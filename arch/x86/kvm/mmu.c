@@ -5169,18 +5169,23 @@ int setting_perms(struct lab_stack_info * data, int perm)
 	
 	int i ;
 	for (i = 0; i < 4; ++i){
-		if(data->entry.is_last_spte[i] == true) {				
+		if(data->entry.is_last_spte[i] == true) {		
 			u64 * p = data->entry.eptps[i];
 			if (p) {
+				u64	spte = *p; 
 				if (perm == LAB_RO) 		 //is_shadow_present_pte(*p) &&
-					*p &= ~PT_WRITABLE_MASK; // clear 0
+					spte &= ~PT_WRITABLE_MASK; // clear 0
 				else if (perm == LAB_WT) 	 //is_shadow_present_pte(*p) && 
-					*p |= PT_WRITABLE_MASK;  // set 1
-				// flush remote tlb
+					spte |= PT_WRITABLE_MASK;  // set 1
+				
+				if (mmu_spte_update(data->entry.eptps[i], spte))
+					kvm_flush_remote_tlbs(vcpu->kvm); 
+				
 				break;
 			} else
 				print_info_state(data);
-		} 	
+		}
+			
 	}
 	return 0;
 }
