@@ -6228,7 +6228,6 @@ int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 
 int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
 {
-	printk("LAB: delete stack pid is %d\n",pid);
 	struct lab_stack_info * info = my_search(&info_tree, pid); //search info node by pid
 	if (info) {
 		setting_perms(vcpu,info, LAB_WT);
