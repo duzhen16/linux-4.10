@@ -5172,14 +5172,14 @@ int setting_perms(struct kvm_vcpu *vcpu, struct lab_stack_info * data, int perm)
 		u64	* spt = iterator.sptep;
 		int level = iterator.level;
 		if (spt) {
-			u64 stpe = *spt;
-			if (is_shadow_present_pte(spte) && is_last_spte(stpe, level)) {
+			u64 spte = *spt;
+			if (is_shadow_present_pte(spte) && is_last_spte(spte, level)) {
 				if (perm == LAB_RO) 		 
 					spte &= ~PT_WRITABLE_MASK; // clear 0
 				else if (perm == LAB_WT) 	
 					spte |= PT_WRITABLE_MASK;  // set 1
 				
-				if (mmu_spte_update(stp, spte))
+				if (mmu_spte_update(spt, spte))
 					kvm_flush_remote_tlbs(vcpu->kvm); 
 				break;
 			}
