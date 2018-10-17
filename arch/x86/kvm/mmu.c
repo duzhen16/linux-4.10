@@ -5164,28 +5164,26 @@ int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack
 	return 0;
 }
 
-int setting_perms(struct kvm_vcpu *vcpu,struct lab_stack_info * data, int perm)
+int setting_perms(struct kvm_vcpu *vcpu, struct lab_stack_info * data, int perm)
 {
-	
-	int i ;
-	for (i = 0; i < 4; ++i){
-		if(data->entry.is_last_spte[i] == true) {		
-			u64 * p = data->entry.eptps[i];
-			if (p) {
-				u64	spte = *p; 
-				if (perm == LAB_RO) 		 //is_shadow_present_pte(*p) &&
+	gfn_t gfn = data.guest_phys >> PAGE_SHIFT;
+	struct kvm_shadow_walk_iterator iterator;
+	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
+		u64	* spt = iterator.sptep;
+		int level = iterator.level;
+		if (spt) {
+			u64 stpe = *spt
+			if (is_shadow_present_pte(spte) && is_last_spte(stpe, level)) {
+				if (perm == LAB_RO) 		 
 					spte &= ~PT_WRITABLE_MASK; // clear 0
-				else if (perm == LAB_WT) 	 //is_shadow_present_pte(*p) && 
+				else if (perm == LAB_WT) 	
 					spte |= PT_WRITABLE_MASK;  // set 1
 				
-				if (mmu_spte_update(data->entry.eptps[i], spte))
+				if (mmu_spte_update(stp, spte))
 					kvm_flush_remote_tlbs(vcpu->kvm); 
-				
 				break;
-			} else
-				print_info_state(data);
-		}
-			
+			}
+		}	
 	}
 	return 0;
 }
