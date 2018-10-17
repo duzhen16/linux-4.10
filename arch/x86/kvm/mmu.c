@@ -5166,13 +5166,13 @@ int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack
 
 int setting_perms(struct kvm_vcpu *vcpu, struct lab_stack_info * data, int perm)
 {
-	gfn_t gfn = data.guest_phys >> PAGE_SHIFT;
+	gfn_t gfn = data->guest_phys >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		u64	* spt = iterator.sptep;
 		int level = iterator.level;
 		if (spt) {
-			u64 stpe = *spt
+			u64 stpe = *spt;
 			if (is_shadow_present_pte(spte) && is_last_spte(stpe, level)) {
 				if (perm == LAB_RO) 		 
 					spte &= ~PT_WRITABLE_MASK; // clear 0
