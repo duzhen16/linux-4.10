@@ -6257,17 +6257,18 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 {
 	gpa_t addr_prev = 0;
 	gpa_t addr_next = 0;
-	if (pid_prev > MIN_NR) {
-		struct lab_stack_info * info_prev = my_search(&info_tree, pid_prev); //search info node by pid
-		if (info_prev)
-			addr_prev = info_prev->guest_phys;
-	}
+	//if (pid_prev > MIN_NR) {
+	struct lab_stack_info * info_prev = my_search(&info_tree, pid_prev); //search info node by pid
+	if (info_prev)
+		addr_prev = info_prev->guest_phys;
+	//}
 	
-	if (pid_next > MIN_NR) {
-		struct lab_stack_info * info_next = my_search(&info_tree, pid_next); //search info node by pid
-		if (info_next)
-			addr_next = info_next->guest_phys;
-	}
+	//if (pid_next > MIN_NR) {
+	struct lab_stack_info * info_next = my_search(&info_tree, pid_next); //search info node by pid
+	if (info_next)
+		addr_next = info_next->guest_phys;
+	//}
+	
 	stacks_on_vcpu[vcpu->vcpu_id] = addr_next;
 	setting_perms(vcpu, addr_next, LAB_WT);
 	if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1]) {
@@ -6313,14 +6314,14 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 	switch (nr) {
 	/* xSun begin */
 	case LAB_HC_CREATE:
-		if(a0 > MIN_NR)
-			handle_create_stack(vcpu,a0,a1);
+		//if(a0 > MIN_NR)
+		handle_create_stack(vcpu,a0,a1);
 		ret = 0;
 		break;
 	
 	case LAB_HC_DELETE:
-		if(a0 > MIN_NR)
-		 	handle_delete_stack(vcpu,a0);
+		//if(a0 > MIN_NR)
+		handle_delete_stack(vcpu,a0);
 		ret = 0;
 		break;
 	
