@@ -6159,20 +6159,20 @@ int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 	list_add_rcu(&(node->l_node), &stack_list);
 
 	/* setting this entry to read_only */
-	setting_perms(vcpu,info->guest_phys, LAB_RO);
+	setting_perms(vcpu,node->guest_phys, LAB_RO);
 	return 0;
 }
 
 int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
 {
-	struct lab_stack_node * info = my_search(pid); //search info node by pid
-	if (info != NULL) {
-		setting_perms(vcpu,info->guest_phys, LAB_WT);
+	struct lab_stack_node * node = my_search(pid); //search info node by pid
+	if (node != NULL) {
+		setting_perms(vcpu,node->guest_phys, LAB_WT);
 		/* delete stack node from stack_list */
 		
 		struct lab_stack_node *pos;
 		list_for_each_entry_rcu(pos, &stack_list, l_node) {
-			if (pos->guest_phys == info->guest_phys && pos->pid == info->pid) {
+			if (pos->pid == node->pid) {
 				list_del_rcu(&(pos->l_node));
 				synchronize_rcu();
 				kfree(pos);
