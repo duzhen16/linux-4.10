@@ -6113,77 +6113,16 @@ void kvm_vcpu_deactivate_apicv(struct kvm_vcpu *vcpu)
 	kvm_x86_ops->refresh_apicv_exec_ctrl(vcpu);
 }
 
+
+/* xsun LAB code below */
+
 gpa_t stacks_on_vcpu[2] = {0,0};
-
-#define MIN_NR	-1
-/* rb tree root for infos */
-struct rb_root info_tree = RB_ROOT;
-
-
-int my_insert(struct rb_root *root, struct lab_stack_info *data)
-{
-  	struct rb_node **new = &(root->rb_node), *parent = NULL;
-
-  	/* Figure out where to put new node */
-  	int result;
-  	while (*new) {
-  		struct lab_stack_info  *this = container_of(*new, struct lab_stack_info, node);
-  		result = data->pid - this->pid;;
-
-		parent = *new;
-  		if (result < 0)
-  			new = &((*new)->rb_left);
-  		else if (result > 0)
-  			new = &((*new)->rb_right);
-  		else
-  			return 0;
-  	}
-
-  	/* Add new node and rebalance tree. */
-  	rb_link_node(&data->node, parent, new);
-  	rb_insert_color(&data->node, root);
-
-	return 1;
-}
-
-struct lab_stack_info * my_search(struct rb_root *root, pid_t key)
-{
-  	struct rb_node *node = root->rb_node;
-
-  	int result ;
-
-  	while (node) {
-  		struct lab_stack_info *data = container_of(node, struct lab_stack_info, node);
-		result = key - data->pid;
-
-		if (result < 0)
-  			node = node->rb_left;
-		else if (result > 0)
-  			node = node->rb_right;
-		else
-  			return data;
-	}
-	return NULL;
-}
-
-void my_free(struct lab_stack_info *node)
-{
-	if (node != NULL) {
-		kfree(node);
-		node = NULL;
-	}
-}
-
 #define   STACK_SHIFT     12
 
 bool found_in_stack_list(gva_t gpa) 
 {
-	// 1. get start addr  aligned by 4K
-	gva_t addr = (gpa >> STACK_SHIFT) << STACK_SHIFT; // 4K aligned
-	
+	gva_t addr = (gpa >> STACK_SHIFT) << STACK_SHIFT; // 4K aligned	
 	bool found = false;
-	// 2. is addr a stack address? 
-	
 	struct lab_stack_node *pos;
 	rcu_read_lock();
 	list_for_each_entry_rcu(pos, &stack_list, l_node) {
@@ -6195,25 +6134,23 @@ bool found_in_stack_list(gva_t gpa)
 	return found;
 }
 
+struct lab_stack_node * my_search(pid_t pid) 
+{
+	struct lab_stack_node * ret = NULL;
+	struct lab_stack_node * pos;
+	rcu_read_lock();
+	list_for_each_entry_rcu(pos, &stack_list, l_node) {
+		if (pos->pid == pid) {
+			ret = pos;
+			break;
+		}
+	}
+	rcu_read_unlock();
+	return ret;
+}
 
 int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 {
-	/* alloc a new info struct */
-	struct lab_stack_info * info = kmalloc(sizeof(*info), GFP_KERNEL);
-	info->pid = pid;
-	info->guest_phys = addr;
-
-	/* set ept entrys */
-	int i;
-	for (i = 0; i < 4; ++i) { // initialize entry 
-		info->entry.is_last_spte[i] = false;
-		info->entry.eptps[i] = NULL;
-	}
-	set_ept_entry(vcpu, pid, addr, info);
-
-	/* create a new rbtree node and insert to info_tree*/
-	my_insert(&info_tree, info);
-	
 	/* create a new list ndoe and add into stack_list */
 	struct lab_stack_node * node = kmalloc(sizeof(*node), GFP_KERNEL);
 	node->pid = pid;
@@ -6228,54 +6165,41 @@ int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 
 int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
 {
-	struct lab_stack_info * info = my_search(&info_tree, pid); //search info node by pid
-	if (info) {
+	struct lab_stack_node * info = my_search(pid); //search info node by pid
+	if (info != NULL) {
 		setting_perms(vcpu,info->guest_phys, LAB_WT);
 		/* delete stack node from stack_list */
-		struct lab_stack_node node;
-		node.guest_phys = info->guest_phys;
-		node.pid = info->pid;
 		
 		struct lab_stack_node *pos;
 		list_for_each_entry_rcu(pos, &stack_list, l_node) {
-			if (pos->guest_phys == node.guest_phys && pos->pid == node.pid) {
+			if (pos->guest_phys == info->guest_phys && pos->pid == info->pid) {
 				list_del_rcu(&(pos->l_node));
 				synchronize_rcu();
 				kfree(pos);
 				break;
 			}
-		}
-		/* delete info node from info_tree */
-		rb_erase(&(info->node), &info_tree);
-		my_free(info);		
+		}	
 	}
 	return 0;
 }
-
 
 int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 {
 	gpa_t addr_prev = 0;
 	gpa_t addr_next = 0;
-	//if (pid_prev > MIN_NR) {
-	struct lab_stack_info * info_prev = my_search(&info_tree, pid_prev); //search info node by pid
+	struct lab_stack_node * info_prev = my_search(pid_prev); //search info node by pid
 	if (info_prev)
 		addr_prev = info_prev->guest_phys;
-	//}
 	
-	//if (pid_next > MIN_NR) {
-	struct lab_stack_info * info_next = my_search(&info_tree, pid_next); //search info node by pid
+	struct lab_stack_node * info_next = my_search(pid_next); //search info node by pid
 	if (info_next)
 		addr_next = info_next->guest_phys;
-	//}
 	
 	stacks_on_vcpu[vcpu->vcpu_id] = addr_next;
 	setting_perms(vcpu, addr_next, LAB_WT);
 	if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1]) {
 		setting_perms(vcpu, addr_prev, LAB_RO);
-		printk("LAB : set RO to pid %d\n",pid_prev);
 	}
-	
 	return 0;
 }
 

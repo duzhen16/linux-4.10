@@ -5137,33 +5137,6 @@ void kvm_mmu_module_exit(void)
 /* rcu list for stack node */
 struct list_head stack_list;
 
-int print_info_state(struct lab_stack_info * data) {
-	printk("LAB : display lab_stack_info state... ");
-	printk("LAB : pid is %d, guest addr is %llx", data->pid, data->guest_phys);
-	int i = 0;
-	for (; i < 4; ++i) {
-		printk("LAB : lab_entry.is_last_spte[%d] is %d", i, data->entry.is_last_spte[i]);
-		u64 * p = data->entry.eptps[i];
-		if (p)
-			printk("LAB : lab_entry.eptps[%d] is %p, * is %llx",i, p, *p);
-		else
-			printk("LAB : lab_entry.eptps[%d] is null",i);
-	}
-}
-
-int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack_info * info)
-{
-	gfn_t gfn = addr >> PAGE_SHIFT;
-	struct kvm_shadow_walk_iterator iterator;
-	int level = 4;
-	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-		info->entry.eptps[iterator.level - 1] = iterator.sptep;
-		level--;
-	}
-	info->entry.is_last_spte[level] = true;
-	return 0;
-}
-
 int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
