@@ -6270,8 +6270,10 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 	}
 	stacks_on_vcpu[vcpu->vcpu_id] = addr_next;
 	setting_perms(vcpu, addr_next, LAB_WT);
-	if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1])
+	if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1]) {
 		setting_perms(vcpu, addr_prev, LAB_RO);
+		printk("LAB : set RO to pid %d\n",pid_prev);
+	}
 	
 	return 0;
 }
