@@ -6113,6 +6113,7 @@ void kvm_vcpu_deactivate_apicv(struct kvm_vcpu *vcpu)
 	kvm_x86_ops->refresh_apicv_exec_ctrl(vcpu);
 }
 
+gpa_t stacks_on_vcpu[2] = {0,0};
 
 #define MIN_NR	-1
 /* rb tree root for infos */
@@ -6251,6 +6252,7 @@ int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
 	return 0;
 }
 
+
 int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 {
 	gpa_t addr_prev = 0;
@@ -6266,10 +6268,10 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 		if (info_next)
 			addr_next = info_next->guest_phys;
 	}
-	if (addr_next != addr_prev) {
-		setting_perms(vcpu, addr_next, LAB_WT);
+	stacks_on_vcpu[vcpu->vcpu_id] = addr_next;
+	setting_perms(vcpu, addr_next, LAB_WT);
+	if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1])
 		setting_perms(vcpu, addr_prev, LAB_RO);
-	}
 	
 	return 0;
 }
