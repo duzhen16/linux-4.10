@@ -6266,7 +6266,7 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 		if (info_next)
 			addr_next = info_next->guest_phys;
 	}
-	if (addr_nexr != addr_prev) {
+	if (addr_next != addr_prev) {
 		setting_perms(vcpu, addr_next, LAB_WT);
 		setting_perms(vcpu, addr_prev, LAB_RO);
 	}
