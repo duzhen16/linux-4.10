@@ -5164,9 +5164,9 @@ int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack
 	return 0;
 }
 
-int setting_perms(struct kvm_vcpu *vcpu, struct lab_stack_info * data, int perm)
+int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
-	gfn_t gfn = data->guest_phys >> PAGE_SHIFT;
+	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		u64	* spt = iterator.sptep;

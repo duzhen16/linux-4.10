@@ -41,7 +41,7 @@ struct lab_stack_node
 #define LAB_WT    2
 
 extern int set_ept_entry(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr, struct lab_stack_info * data); 
-extern int setting_perms(struct kvm_vcpu *vcpu, struct lab_stack_info * data, int perm);
+extern int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm);
 extern bool found_in_stack_list(gva_t gpa); 
 
 extern struct list_head stack_list;

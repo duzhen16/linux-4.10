@@ -6114,7 +6114,7 @@ void kvm_vcpu_deactivate_apicv(struct kvm_vcpu *vcpu)
 }
 
 
-#define MIN_NR	2000
+#define MIN_NR	-1
 /* rb tree root for infos */
 struct rb_root info_tree = RB_ROOT;
 
@@ -6187,8 +6187,7 @@ bool found_in_stack_list(gva_t gpa)
 	rcu_read_lock();
 	list_for_each_entry_rcu(pos, &stack_list, l_node) {
 		if (pos->guest_phys == addr) {
-			found = true;
-			break;
+			printk("LAB : pid is %d\n",pos->pid);
 		}
 	}
 	rcu_read_unlock();
@@ -6222,7 +6221,7 @@ int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 	list_add_rcu(&(node->l_node), &stack_list);
 
 	/* setting this entry to read_only */
-	setting_perms(vcpu,info, LAB_RO);
+	setting_perms(vcpu,info->guest_phys, LAB_RO);
 	return 0;
 }
 
@@ -6230,7 +6229,7 @@ int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
 {
 	struct lab_stack_info * info = my_search(&info_tree, pid); //search info node by pid
 	if (info) {
-		setting_perms(vcpu,info, LAB_WT);
+		setting_perms(vcpu,info->guest_phys, LAB_WT);
 		/* delete stack node from stack_list */
 		struct lab_stack_node node;
 		node.guest_phys = info->guest_phys;
@@ -6254,17 +6253,24 @@ int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
 
 int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 {
+	gpa_t addr_prev = 0;
+	gpa_t addr_next = 0;
 	if (pid_prev > MIN_NR) {
 		struct lab_stack_info * info_prev = my_search(&info_tree, pid_prev); //search info node by pid
 		if (info_prev)
-			setting_perms(vcpu, info_prev, LAB_RO);
+			addr_prev = info_prev->guest_phys;
 	}
 	
 	if (pid_next > MIN_NR) {
 		struct lab_stack_info * info_next = my_search(&info_tree, pid_next); //search info node by pid
-		if (info_next)		
-			setting_perms(vcpu, info_next, LAB_WT);
+		if (info_next)
+			addr_next = info_next->guest_phys;
 	}
+	if (addr_nexr != addr_prev) {
+		setting_perms(vcpu, addr_next, LAB_WT);
+		setting_perms(vcpu, addr_prev, LAB_RO);
+	}
+	
 	return 0;
 }
 
