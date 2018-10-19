@@ -6238,13 +6238,11 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 	switch (nr) {
 	/* xSun begin */
 	case LAB_HC_CREATE:
-		//if(a0 > MIN_NR)
 		handle_create_stack(vcpu,a0,a1);
 		ret = 0;
 		break;
 	
 	case LAB_HC_DELETE:
-		//if(a0 > MIN_NR)
 		handle_delete_stack(vcpu,a0);
 		ret = 0;
 		break;
