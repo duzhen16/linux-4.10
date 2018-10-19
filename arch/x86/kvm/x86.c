@@ -6203,6 +6203,28 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 	return 0;
 }
 
+
+int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid);
+{
+	/* print target process' info in guest */
+	struct lab_stack_node * pos;
+	gpa_t addr = 0;
+	rcu_read_lock();
+	list_for_each_entry_rcu(pos, &stack_list, l_node) {
+		if (pos->pid == pid) {
+			addr = pos->guest_phys;
+			break;
+		}
+	}
+	rcu_read_unlock();
+	if (addr != 0) {
+		printf ("LAB : target process at vcpu %d, stack addr is %llx",vcpu->vcpu_id, addr);
+		iterate_ept(vcpu, addr);
+	} else 
+		printf("LAB : Not Found target process\n");
+	return 0;
+}
+
 int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 {
 	unsigned long nr, a0, a1, a2, a3, ret;
@@ -6253,6 +6275,7 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 		break;
 	
 	case LAB_HC_TEST:
+		guest_VM_tools(vcpu, a0);
 		ret = 16;
 		break;
 	/* xSun end */

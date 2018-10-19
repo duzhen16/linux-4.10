@@ -29,5 +29,5 @@ struct lab_stack_node
 
 extern int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm);
 extern bool found_in_stack_list(gva_t gpa); 
-
+extern bool iterate_ept(struct kvm_vcpu *vcpu, gpa_t addr);
 extern struct list_head stack_list;

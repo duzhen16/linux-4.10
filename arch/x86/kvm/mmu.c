@@ -5163,3 +5163,16 @@ int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 	return 0;
 }
 
+bool iterate_ept(struct kvm_vcpu *vcpu, gpa_t addr) 
+{
+	gfn_t gfn = addr >> PAGE_SHIFT;
+	struct kvm_shadow_walk_iterator iterator;
+	spin_lock(&vcpu->kvm->mmu_lock);
+	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
+		if (is_shadow_present_pte(*iterator.sptep)) {
+			printf("LAB : level %d, ptr is %p, content is %llx\n", iterator.level, iterator.sptep, *iterator.sptep);
+		}
+	}
+	spin_unlock(&vcpu->kvm->mmu_lock);
+	return true;
+}
