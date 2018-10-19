@@ -6204,7 +6204,7 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 }
 
 
-int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid);
+int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid)
 {
 	/* print target process' info in guest */
 	struct lab_stack_node * pos;
