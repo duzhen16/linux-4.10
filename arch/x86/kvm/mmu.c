@@ -5170,7 +5170,7 @@ bool iterate_ept(struct kvm_vcpu *vcpu, gpa_t addr)
 	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		if (is_shadow_present_pte(*iterator.sptep)) {
-			printf("LAB : level %d, ptr is %p, content is %llx\n", iterator.level, iterator.sptep, *iterator.sptep);
+			printk("LAB : level %d, ptr is %p, content is %llx\n", iterator.level, iterator.sptep, *iterator.sptep);
 		}
 	}
 	spin_unlock(&vcpu->kvm->mmu_lock);

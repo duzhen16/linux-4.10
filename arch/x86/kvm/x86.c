@@ -6218,10 +6218,10 @@ int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid)
 	}
 	rcu_read_unlock();
 	if (addr != 0) {
-		printf ("LAB : target process at vcpu %d, stack addr is %llx",vcpu->vcpu_id, addr);
+		printk ("LAB : target process at vcpu %d, stack addr is %llx",vcpu->vcpu_id, addr);
 		iterate_ept(vcpu, addr);
 	} else 
-		printf("LAB : Not Found target process\n");
+		printk("LAB : Not Found target process\n");
 	return 0;
 }
 
