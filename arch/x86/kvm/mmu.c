@@ -5143,7 +5143,7 @@ int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 	struct kvm_shadow_walk_iterator iterator;	
 	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-		if ((is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
+		if (is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
 			u64 spte = *iterator.sptep;;
 			if (perm == LAB_RO) 		 
 				spte &= ~PT_WRITABLE_MASK; // clear 0
