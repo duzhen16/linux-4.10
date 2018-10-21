@@ -6201,10 +6201,10 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 	return 0;
 }
 
-
-int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid)
+int print_target_process_info(struct kvm_vcpu *vcpu, pid_t pid)
 {
 	/* print target process' info in guest */
+	printk("LAB : target pid is %d\n",pid);
 	struct lab_stack_node * pos;
 	gpa_t addr = 0;
 	rcu_read_lock();
@@ -6220,6 +6220,37 @@ int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid)
 		iterate_ept(vcpu, addr);
 	} else 
 		printk("LAB : Not Found target process\n");
+	return 0;
+}
+
+int print_all_process(struct kvm_vcpu *vcpu)
+{
+	/* print all process' info in guest */
+	struct lab_stack_node * pos;
+	gpa_t addr = 0;
+	int p = 0;
+	rcu_read_lock();
+	list_for_each_entry_rcu(pos, &stack_list, l_node) {
+			addr = pos->guest_phys;
+			if (addr != 0) {
+				printk ("LAB : pid is %d at vcpu %d, stack addr is %llx",pos->pid, vcpu->vcpu_id, addr);
+				iterate_ept(vcpu, addr);
+			} else 
+				printk("LAB : Not Found target process\n");
+			addr = 0;
+			p = 1;
+	}
+	rcu_read_unlock();
+	if (p == 0) {
+		printk("LAB : list is empty\n");
+	}
+	return 0;
+	
+}
+
+int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid)
+{
+	print_all_process(vcpu);
 	return 0;
 }
 
