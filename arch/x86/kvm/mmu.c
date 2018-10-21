@@ -5150,7 +5150,7 @@ int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 			else if (perm == LAB_WT) 	
 				spte |= PT_WRITABLE_MASK;  // set 1
 			
-			if (mmu_spte_update(spt, spte))
+			if (mmu_spte_update(iterator.sptep, spte))
 				kvm_flush_remote_tlbs(vcpu->kvm); 
 			break;
 		}	
