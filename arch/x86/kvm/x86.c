@@ -6248,9 +6248,16 @@ int print_all_process(struct kvm_vcpu *vcpu)
 	
 }
 
-int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid)
+int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid£¬int tool_nr)
 {
-	print_all_process(vcpu);
+	switch (tool_nr) {
+		case 0:
+			print_all_process(vcpu);
+			break;
+		
+		case 1:
+			print_target_process_info(vcpu, pid);
+	}
 	return 0;
 }
 
