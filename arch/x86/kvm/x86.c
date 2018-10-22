@@ -6128,6 +6128,7 @@ bool found_in_stack_list(gva_t gpa)
 	list_for_each_entry_rcu(pos, &stack_list, l_node) {
 		if (pos->guest_phys == addr) {
 			printk("LAB : pid is %d\n",pos->pid);
+			found = true;
 		}
 	}
 	rcu_read_unlock();
@@ -6257,6 +6258,7 @@ int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid£¬int tool_nr)
 		
 		case 1:
 			print_target_process_info(vcpu, pid);
+			break;
 	}
 	return 0;
 }
