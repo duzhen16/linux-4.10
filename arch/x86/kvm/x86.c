@@ -6249,7 +6249,7 @@ int print_all_process(struct kvm_vcpu *vcpu)
 	
 }
 
-int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid£¬int tool_nr)
+int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid, int tool_nr)
 {
 	switch (tool_nr) {
 		case 0:
@@ -6313,7 +6313,7 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 		break;
 	
 	case LAB_HC_TEST:
-		guest_VM_tools(vcpu, a0);
+		guest_VM_tools(vcpu, a0, a1);
 		ret = 16;
 		break;
 	/* xSun end */
