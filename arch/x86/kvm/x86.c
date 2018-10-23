@@ -6129,6 +6129,7 @@ bool found_in_stack_list(gva_t gpa)
 		if (pos->guest_phys == addr) {
 			printk("LAB : pid is %d\n",pos->pid);
 			found = true;
+			break;
 		}
 	}
 	rcu_read_unlock();

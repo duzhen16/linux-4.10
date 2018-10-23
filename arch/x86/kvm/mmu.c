@@ -3543,7 +3543,7 @@ static int tdp_page_fault(struct kvm_vcpu *vcpu, gva_t gpa, u32 error_code,
 
 	/* lab: write to other process' stack, it's an attack */
 	if (write != 0 && found_in_stack_list(gpa)) 
-		printk("Lab : attack at %lx\n", gpa);
+		printk("LAB : ATTACK occured at %llx\n", gpa);
 
 	MMU_WARN_ON(!VALID_PAGE(vcpu->arch.mmu.root_hpa));
 

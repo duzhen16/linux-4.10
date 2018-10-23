@@ -4772,6 +4772,8 @@ out_put_task:
 	return retval;
 }
 
+EXPORT_SYMBOL_GPL(sched_setaffinity);
+
 static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 			     struct cpumask *new_mask)
 {
