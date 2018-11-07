@@ -4114,6 +4114,9 @@ static void init_kvm_tdp_mmu(struct kvm_vcpu *vcpu)
 	update_pkru_bitmask(vcpu, context, false);
 	update_last_nonleaf_level(vcpu, context);
 	reset_tdp_shadow_zero_bits_mask(vcpu, context);
+	
+	printk("LAB : vcpu info id %d, root_level %d, root_hpa %llx",vcpu->vcpu_id, context->root_level,context->root_hpa);
+
 }
 
 void kvm_init_shadow_mmu(struct kvm_vcpu *vcpu)

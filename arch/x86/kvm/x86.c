@@ -6255,7 +6255,7 @@ int print_all_root_hpa(struct kvm_vcpu *vcpu) {
 	int i = 0;
 	for (; i < 2; ++i) {
 		if (lab_kvm->vcpus[i])
-			printk("LAB: vcpu %d root_hpa is %lld", lab_kvm->vcpus[i]->arch.mmu.root_hpa);
+			printk("LAB: vcpu %d root_hpa is %lld",i, lab_kvm->vcpus[i]->arch.mmu.root_hpa);
 	}
 	return 0;
 }
