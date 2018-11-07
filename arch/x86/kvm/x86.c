@@ -6250,11 +6250,23 @@ int print_all_process(struct kvm_vcpu *vcpu)
 	
 }
 
+int print_all_root_hpa(struct kvm_vcpu *vcpu) {
+	struct kvm * lab_kvm = vcpu->kvm;
+	struct kvm_vcpu *vcpus = lab_kvm->vcpus;
+	int i = 0;
+	for (; i < 2; ++i) {
+		if (vcpus[i] != NULL)
+			printk("LAB: vcpu %d root_hpa is %lld", vcpus[i]->arch.mmu.root_hpa);
+	}
+	return 0;
+}
+
 int guest_VM_tools(struct kvm_vcpu *vcpu, pid_t pid, int tool_nr)
 {
 	switch (tool_nr) {
 		case 0:
-			print_all_process(vcpu);
+			//print_all_process(vcpu);
+			print_all_root_hpa(vcpu);
 			break;
 		
 		case 1:
