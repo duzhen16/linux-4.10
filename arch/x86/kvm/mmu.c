@@ -2134,7 +2134,6 @@ static struct kvm_mmu_page *kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 		role.quadrant = quadrant;
 	}
 	for_each_gfn_valid_sp(vcpu->kvm, sp, gfn) {
-		printk("LAB: second \n");
 		if (!need_sync && sp->unsync)
 			need_sync = true;
 
@@ -2163,7 +2162,6 @@ static struct kvm_mmu_page *kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 	++vcpu->kvm->stat.mmu_cache_miss;
 
 	sp = kvm_mmu_alloc_page(vcpu, direct);
-	printk("LAB: first \n");
 	sp->gfn = gfn;
 	sp->role = role;
 	hlist_add_head(&sp->hash_link,
@@ -2189,6 +2187,65 @@ static struct kvm_mmu_page *kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 	kvm_mmu_flush_or_zap(vcpu, &invalid_list, false, flush);
 	return sp;
 }
+
+
+static struct kvm_mmu_page *lab_kvm_mmu_get_page(struct kvm_vcpu *vcpu,
+					     gfn_t gfn,
+					     gva_t gaddr,
+					     unsigned level,
+					     int direct,
+					     unsigned access)
+{
+	union kvm_mmu_page_role role;
+	unsigned quadrant;
+	struct kvm_mmu_page *sp;
+	bool need_sync = false;
+	bool flush = false;
+	LIST_HEAD(invalid_list);
+
+	role = vcpu->arch.mmu.base_role;
+	role.level = level;
+	role.direct = direct;
+	if (role.direct)
+		role.cr4_pae = 0;
+	role.access = access;
+	if (!vcpu->arch.mmu.direct_map
+	    && vcpu->arch.mmu.root_level <= PT32_ROOT_LEVEL) {
+		quadrant = gaddr >> (PAGE_SHIFT + (PT64_PT_BITS * level));
+		quadrant &= (1 << ((PT32_PT_BITS - PT64_PT_BITS) * level)) - 1;
+		role.quadrant = quadrant;
+	}
+	
+	++vcpu->kvm->stat.mmu_cache_miss;
+
+	sp = kvm_mmu_alloc_page(vcpu, direct);
+	sp->gfn = gfn;
+	sp->role = role;
+	hlist_add_head(&sp->hash_link,
+		&vcpu->kvm->arch.mmu_page_hash[kvm_page_table_hashfn(gfn)]);
+	if (!direct) {
+		/*
+		 * we should do write protection before syncing pages
+		 * otherwise the content of the synced shadow page may
+		 * be inconsistent with guest page table.
+		 */
+		account_shadowed(vcpu->kvm, sp);
+		if (level == PT_PAGE_TABLE_LEVEL &&
+		      rmap_write_protect(vcpu, gfn))
+			kvm_flush_remote_tlbs(vcpu->kvm);
+
+		if (level > PT_PAGE_TABLE_LEVEL && need_sync)
+			flush |= kvm_sync_pages(vcpu, gfn, &invalid_list);
+	}
+	sp->mmu_valid_gen = vcpu->kvm->arch.mmu_valid_gen;
+	clear_page(sp->spt);
+	trace_kvm_mmu_get_page(sp, true);
+
+	kvm_mmu_flush_or_zap(vcpu, &invalid_list, false, flush);
+	return sp;
+}
+
+
 
 static void shadow_walk_init(struct kvm_shadow_walk_iterator *iterator,
 			     struct kvm_vcpu *vcpu, u64 addr)
@@ -3119,15 +3176,19 @@ static int mmu_alloc_direct_roots(struct kvm_vcpu *vcpu)
 	unsigned i;
 
 	if (vcpu->arch.mmu.shadow_root_level == PT64_ROOT_LEVEL) {
-		printk("LAB: 64\n");
 		spin_lock(&vcpu->kvm->mmu_lock);
 		make_mmu_pages_available(vcpu);
-		sp = kvm_mmu_get_page(vcpu, 0, 0, PT64_ROOT_LEVEL, 1, ACC_ALL);
+		
+		/*导致了多个vcpu使用同一套EPT
+		这是原本的代码
+		/sp = kvm_mmu_get_page(vcpu, 0, 0, PT64_ROOT_LEVEL, 1, ACC_ALL);*/
+
+		/* This is my lab get root mmu page, each time alloc a new page for each vcpu */
+		sp = lab_kvm_mmu_get_page(vcpu, 0, 0, PT64_ROOT_LEVEL, 1, ACC_ALL);
 		++sp->root_count;
 		spin_unlock(&vcpu->kvm->mmu_lock);
 		vcpu->arch.mmu.root_hpa = __pa(sp->spt);
 	} else if (vcpu->arch.mmu.shadow_root_level == PT32E_ROOT_LEVEL) {
-		printk("LAB: 32E\n");
 		for (i = 0; i < 4; ++i) {
 			hpa_t root = vcpu->arch.mmu.pae_root[i];
 
