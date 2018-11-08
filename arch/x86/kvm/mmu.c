@@ -2134,6 +2134,7 @@ static struct kvm_mmu_page *kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 		role.quadrant = quadrant;
 	}
 	for_each_gfn_valid_sp(vcpu->kvm, sp, gfn) {
+		printk("LAB: second \n");
 		if (!need_sync && sp->unsync)
 			need_sync = true;
 
@@ -2162,7 +2163,7 @@ static struct kvm_mmu_page *kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 	++vcpu->kvm->stat.mmu_cache_miss;
 
 	sp = kvm_mmu_alloc_page(vcpu, direct);
-
+	printk("LAB: first \n");
 	sp->gfn = gfn;
 	sp->role = role;
 	hlist_add_head(&sp->hash_link,
@@ -3118,6 +3119,7 @@ static int mmu_alloc_direct_roots(struct kvm_vcpu *vcpu)
 	unsigned i;
 
 	if (vcpu->arch.mmu.shadow_root_level == PT64_ROOT_LEVEL) {
+		printk("LAB: 64\n");
 		spin_lock(&vcpu->kvm->mmu_lock);
 		make_mmu_pages_available(vcpu);
 		sp = kvm_mmu_get_page(vcpu, 0, 0, PT64_ROOT_LEVEL, 1, ACC_ALL);
@@ -3125,6 +3127,7 @@ static int mmu_alloc_direct_roots(struct kvm_vcpu *vcpu)
 		spin_unlock(&vcpu->kvm->mmu_lock);
 		vcpu->arch.mmu.root_hpa = __pa(sp->spt);
 	} else if (vcpu->arch.mmu.shadow_root_level == PT32E_ROOT_LEVEL) {
+		printk("LAB: 32E\n");
 		for (i = 0; i < 4; ++i) {
 			hpa_t root = vcpu->arch.mmu.pae_root[i];
 
@@ -4252,6 +4255,7 @@ int kvm_mmu_load(struct kvm_vcpu *vcpu)
 	if (r)
 		goto out;
 	/* set_cr3() should ensure TLB has been flushed */
+	/* if ept enable, construct eptp by root_hpa */
 	vcpu->arch.mmu.set_cr3(vcpu, vcpu->arch.mmu.root_hpa);
 out:
 	return r;
