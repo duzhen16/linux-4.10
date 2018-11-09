@@ -6218,8 +6218,12 @@ int print_target_process_info(struct kvm_vcpu *vcpu, pid_t pid)
 	}
 	rcu_read_unlock();
 	if (addr != 0) {
-		printk ("LAB : target process at vcpu %d, stack addr is %llx",vcpu->vcpu_id, addr);
-		iterate_ept(vcpu, addr);
+		struct kvm *lab_kvm = vcpu->kvm;
+		int i = 0;
+		for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
+			printk ("LAB : target process at vcpu %d, stack addr is %llx",lab_kvm->vcpus[i]->vcpu_id, addr);
+			iterate_ept(lab_kvm->vcpus[i], addr);
+		}	
 	} else 
 		printk("LAB : Not Found target process\n");
 	return 0;
