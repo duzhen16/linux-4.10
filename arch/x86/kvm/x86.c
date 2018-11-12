@@ -6206,7 +6206,7 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 int print_target_process_info(struct kvm_vcpu *vcpu, pid_t pid)
 {
 	/* print target process' info in guest */
-	printk("LAB : target pid is %d\n",pid);
+	printk("LAB : target pid is %d, stack addr is 0x%llx\n",pid, addr);
 	struct lab_stack_node * pos;
 	gpa_t addr = 0;
 	rcu_read_lock();
@@ -6221,7 +6221,8 @@ int print_target_process_info(struct kvm_vcpu *vcpu, pid_t pid)
 		struct kvm *lab_kvm = vcpu->kvm;
 		int i = 0;
 		for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
-			printk ("LAB : target process at vcpu %d, stack addr is %llx",lab_kvm->vcpus[i]->vcpu_id, addr);
+			struct kvm_vcpu *v = lab_kvm->vcpus[i];
+			printk ("LAB : target process at vcpu %d, root_hpa is 0x%llx",v->vcpu_id, v->arch.mmu.root_hpa);
 			iterate_ept(lab_kvm->vcpus[i], addr);
 		}	
 	} else 
@@ -6258,8 +6259,10 @@ int print_all_root_hpa(struct kvm_vcpu *vcpu) {
 	struct kvm *lab_kvm = vcpu->kvm;
 	int i = 0;
 	for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
-		if (lab_kvm->vcpus[i])
-			printk("LAB: vcpu %d root_hpa is %lld,level is %d",i, lab_kvm->vcpus[i]->arch.mmu.root_hpa,lab_kvm->vcpus[i]->arch.mmu.shadow_root_level);
+		if (lab_kvm->vcpus[i]) {
+			struct kvm_vcpu *v = lab_kvm->vcpus[i];
+			printk("LAB: vcpu %d root_hpa is 0x%llx,level is %d",i, v->arch.mmu.root_hpa,v->arch.mmu.shadow_root_level);
+		}
 	}
 	return 0;
 }

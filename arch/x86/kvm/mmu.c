@@ -2823,7 +2823,7 @@ static int __direct_map(struct kvm_vcpu *vcpu, int write, int map_writable,
 
 			base_addr &= PT64_LVL_ADDR_MASK(iterator.level);
 			pseudo_gfn = base_addr >> PAGE_SHIFT;
-			sp = kvm_mmu_get_page(vcpu, pseudo_gfn, iterator.addr,
+			sp = lab_kvm_mmu_get_page(vcpu, pseudo_gfn, iterator.addr,
 					      iterator.level - 1, 1, ACC_ALL);
 
 			link_shadow_page(vcpu, iterator.sptep, sp);
@@ -2990,7 +2990,7 @@ static bool fast_page_fault(struct kvm_vcpu *vcpu, gva_t gva, int level,
 	if (!VALID_PAGE(vcpu->arch.mmu.root_hpa))
 		return false;
 
-	if (!page_fault_can_be_fast(error_code))
+	if (!page_fault_can_be_fast(error_code)) // present and write-protected
 		return false;
 
 	walk_shadow_page_lockless_begin(vcpu);
@@ -3619,7 +3619,7 @@ static int tdp_page_fault(struct kvm_vcpu *vcpu, gva_t gpa, u32 error_code,
 		return r;
 
 	force_pt_level = !check_hugepage_cache_consistency(vcpu, gfn,
-							   PT_DIRECTORY_LEVEL);
+							   PT_DIRECTORY_LEVEL); // == 2
 	level = mapping_level(vcpu, gfn, &force_pt_level);
 	if (likely(!force_pt_level)) {
 		if (level > PT_DIRECTORY_LEVEL &&
