@@ -6206,7 +6206,6 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 int print_target_process_info(struct kvm_vcpu *vcpu, pid_t pid)
 {
 	/* print target process' info in guest */
-	printk("LAB : target pid is %d, stack addr is 0x%llx\n",pid, addr);
 	struct lab_stack_node * pos;
 	gpa_t addr = 0;
 	rcu_read_lock();
@@ -6216,6 +6215,7 @@ int print_target_process_info(struct kvm_vcpu *vcpu, pid_t pid)
 			break;
 		}
 	}
+	printk("LAB : target pid is %d, stack addr is 0x%llx\n",pid, addr);
 	rcu_read_unlock();
 	if (addr != 0) {
 		struct kvm *lab_kvm = vcpu->kvm;
