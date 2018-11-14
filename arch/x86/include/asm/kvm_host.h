@@ -722,7 +722,8 @@ struct kvm_arch {
 	unsigned int n_max_mmu_pages;
 	unsigned int indirect_shadow_pages;
 	unsigned long mmu_valid_gen;
-	struct hlist_head mmu_page_hash[KVM_NUM_MMU_PAGES];
+	struct hlist_head mmu_page_hash[2][KVM_NUM_MMU_PAGES]; // add 2D hlist
+	//struct hlist_head mmu_page_hash[KVM_NUM_MMU_PAGES]; // this is original
 	/*
 	 * Hash table of struct kvm_mmu_page.
 	 */

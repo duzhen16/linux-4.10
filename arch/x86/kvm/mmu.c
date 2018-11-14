@@ -1915,6 +1915,12 @@ static void kvm_mmu_commit_zap_page(struct kvm *kvm,
 		if ((_sp)->gfn != (_gfn) || is_obsolete_sp((_kvm), (_sp)) \
 			|| (_sp)->role.invalid) {} else
 
+#define lab_for_each_gfn_valid_sp(_kvm, _sp, _gfn, _vcpu_id)				\
+	hlist_for_each_entry(_sp,					\
+	  &(_kvm)->arch.mmu_page_hash[_vcpu_id][kvm_page_table_hashfn(_gfn)], hash_link) \
+		if ((_sp)->gfn != (_gfn) || is_obsolete_sp((_kvm), (_sp)) \
+			|| (_sp)->role.invalid) {} else
+
 #define for_each_gfn_indirect_valid_sp(_kvm, _sp, _gfn)			\
 	for_each_gfn_valid_sp(_kvm, _sp, _gfn)				\
 		if ((_sp)->role.direct) {} else
@@ -2215,6 +2221,32 @@ static struct kvm_mmu_page *lab_kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 		quadrant &= (1 << ((PT32_PT_BITS - PT64_PT_BITS) * level)) - 1;
 		role.quadrant = quadrant;
 	}
+
+	lab_for_each_gfn_valid_sp(vcpu->kvm, sp, gfn, vcpu->vcpu_id) {
+		if (!need_sync && sp->unsync)
+			need_sync = true;
+
+		if (sp->role.word != role.word)
+			continue;
+
+		if (sp->unsync) {
+			/* The page is good, but __kvm_sync_page might still end
+			 * up zapping it.  If so, break in order to rebuild it.
+			 */
+			if (!__kvm_sync_page(vcpu, sp, &invalid_list))
+				break;
+
+			WARN_ON(!list_empty(&invalid_list));
+			kvm_make_request(KVM_REQ_TLB_FLUSH, vcpu);
+		}
+
+		if (sp->unsync_children)
+			kvm_make_request(KVM_REQ_MMU_SYNC, vcpu);
+
+		__clear_sp_write_flooding_count(sp);
+		trace_kvm_mmu_get_page(sp, false);
+		return sp;
+	}
 	
 	++vcpu->kvm->stat.mmu_cache_miss;
 
@@ -2222,7 +2254,7 @@ static struct kvm_mmu_page *lab_kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 	sp->gfn = gfn;
 	sp->role = role;
 	hlist_add_head(&sp->hash_link,
-		&vcpu->kvm->arch.mmu_page_hash[kvm_page_table_hashfn(gfn)]);
+		&vcpu->kvm->arch.mmu_page_hash[vcpu->vcpu_id][kvm_page_table_hashfn(gfn)]);
 	if (!direct) {
 		/*
 		 * we should do write protection before syncing pages
