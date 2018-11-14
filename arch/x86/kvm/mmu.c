@@ -1924,6 +1924,7 @@ THIS IS ORIGINAL
 		if ((_sp)->gfn != (_gfn) || is_obsolete_sp((_kvm), (_sp)) \
 			|| (_sp)->role.invalid) {} else
 
+//这里加了_vcpu_id这个参数，原本是没有的
 #define for_each_gfn_indirect_valid_sp(_kvm, _sp, _gfn, _vcpu_id)			\
 	for_each_gfn_valid_sp(_kvm, _sp, _gfn, _vcpu_id)				\
 		if ((_sp)->role.direct) {} else
@@ -2464,11 +2465,14 @@ int kvm_mmu_unprotect_page(struct kvm *kvm, gfn_t gfn)
 	pgprintk("%s: looking for gfn %llx\n", __func__, gfn);
 	r = 0;
 	spin_lock(&kvm->mmu_lock);
-	for_each_gfn_indirect_valid_sp(kvm, sp, gfn, vcpu->vcpu_id) {
-		pgprintk("%s: gfn %llx role %x\n", __func__, gfn,
-			 sp->role.word);
-		r = 1;
-		kvm_mmu_prepare_zap_page(kvm, sp, &invalid_list);
+	int vcpu_id;
+	for (vcpu_id = 0; vcpu_id < 2; ++vcpu_id {
+		for_each_gfn_indirect_valid_sp(kvm, sp, gfn, vcpu_id) {
+			pgprintk("%s: gfn %llx role %x\n", __func__, gfn,
+				sp->role.word);
+			r = 1;
+			kvm_mmu_prepare_zap_page(kvm, sp, &invalid_list);
+		}
 	}
 	kvm_mmu_commit_zap_page(kvm, &invalid_list);
 	spin_unlock(&kvm->mmu_lock);
