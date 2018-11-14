@@ -1909,20 +1909,23 @@ static void kvm_mmu_commit_zap_page(struct kvm *kvm,
  *
  * for_each_gfn_valid_sp() has skipped that kind of pages.
  */
+/*
+THIS IS ORIGINAL
 #define for_each_gfn_valid_sp(_kvm, _sp, _gfn)				\
 	hlist_for_each_entry(_sp,					\
 	  &(_kvm)->arch.mmu_page_hash[kvm_page_table_hashfn(_gfn)], hash_link) \
 		if ((_sp)->gfn != (_gfn) || is_obsolete_sp((_kvm), (_sp)) \
 			|| (_sp)->role.invalid) {} else
 
-#define lab_for_each_gfn_valid_sp(_kvm, _sp, _gfn, _vcpu_id)				\
+*/
+#define for_each_gfn_valid_sp(_kvm, _sp, _gfn, _vcpu_id)				\
 	hlist_for_each_entry(_sp,					\
 	  &(_kvm)->arch.mmu_page_hash[_vcpu_id][kvm_page_table_hashfn(_gfn)], hash_link) \
 		if ((_sp)->gfn != (_gfn) || is_obsolete_sp((_kvm), (_sp)) \
 			|| (_sp)->role.invalid) {} else
 
-#define for_each_gfn_indirect_valid_sp(_kvm, _sp, _gfn)			\
-	for_each_gfn_valid_sp(_kvm, _sp, _gfn)				\
+#define for_each_gfn_indirect_valid_sp(_kvm, _sp, _gfn, _vcpu_id)			\
+	for_each_gfn_valid_sp(_kvm, _sp, _gfn, _vcpu_id)				\
 		if ((_sp)->role.direct) {} else
 
 /* @sp->gfn should be write-protected at the call site */
@@ -1983,7 +1986,7 @@ static bool kvm_sync_pages(struct kvm_vcpu *vcpu, gfn_t gfn,
 	struct kvm_mmu_page *s;
 	bool ret = false;
 
-	for_each_gfn_indirect_valid_sp(vcpu->kvm, s, gfn) {
+	for_each_gfn_indirect_valid_sp(vcpu->kvm, s, gfn, vcpu->vcpu_id) {
 		if (!s->unsync)
 			continue;
 
@@ -2222,7 +2225,7 @@ static struct kvm_mmu_page *lab_kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 		role.quadrant = quadrant;
 	}
 
-	lab_for_each_gfn_valid_sp(vcpu->kvm, sp, gfn, vcpu->vcpu_id) {
+	for_each_gfn_valid_sp(vcpu->kvm, sp, gfn, vcpu->vcpu_id) {
 		if (!need_sync && sp->unsync)
 			need_sync = true;
 
@@ -2545,7 +2548,7 @@ int kvm_mmu_unprotect_page(struct kvm *kvm, gfn_t gfn)
 	pgprintk("%s: looking for gfn %llx\n", __func__, gfn);
 	r = 0;
 	spin_lock(&kvm->mmu_lock);
-	for_each_gfn_indirect_valid_sp(kvm, sp, gfn) {
+	for_each_gfn_indirect_valid_sp(kvm, sp, gfn, vcpu->vcpu_id) {
 		pgprintk("%s: gfn %llx role %x\n", __func__, gfn,
 			 sp->role.word);
 		r = 1;
@@ -2575,7 +2578,7 @@ static bool mmu_need_write_protect(struct kvm_vcpu *vcpu, gfn_t gfn,
 	if (kvm_page_track_is_active(vcpu, gfn, KVM_PAGE_TRACK_WRITE))
 		return true;
 
-	for_each_gfn_indirect_valid_sp(vcpu->kvm, sp, gfn) {
+	for_each_gfn_indirect_valid_sp(vcpu->kvm, sp, gfn, vcpu->vcpu_id) {
 		if (!can_unsync)
 			return true;
 
@@ -4543,7 +4546,7 @@ static void kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 	++vcpu->kvm->stat.mmu_pte_write;
 	kvm_mmu_audit(vcpu, AUDIT_PRE_PTE_WRITE);
 
-	for_each_gfn_indirect_valid_sp(vcpu->kvm, sp, gfn) {
+	for_each_gfn_indirect_valid_sp(vcpu->kvm, sp, gfn, vcpu->vcpu_id) {
 		if (detect_write_misaligned(sp, gpa, bytes) ||
 		      detect_write_flooding(sp)) {
 			kvm_mmu_prepare_zap_page(vcpu->kvm, sp, &invalid_list);
