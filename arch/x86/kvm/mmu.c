@@ -2466,7 +2466,7 @@ int kvm_mmu_unprotect_page(struct kvm *kvm, gfn_t gfn)
 	r = 0;
 	spin_lock(&kvm->mmu_lock);
 	int vcpu_id;
-	for (vcpu_id = 0; vcpu_id < 2; ++vcpu_id {
+	for (vcpu_id = 0; vcpu_id < 2; ++vcpu_id) {
 		for_each_gfn_indirect_valid_sp(kvm, sp, gfn, vcpu_id) {
 			pgprintk("%s: gfn %llx role %x\n", __func__, gfn,
 				sp->role.word);
