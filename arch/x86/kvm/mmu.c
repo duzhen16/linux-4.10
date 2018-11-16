@@ -5156,7 +5156,6 @@ struct list_head stack_list;
 
 int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
-	/*
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;	
 	spin_lock(&vcpu->kvm->mmu_lock);
@@ -5174,7 +5173,6 @@ int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 		}	
 	}
 	spin_unlock(&vcpu->kvm->mmu_lock);
-	*/
 	return 0;
 }
 
