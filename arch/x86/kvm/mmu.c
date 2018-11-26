@@ -5154,32 +5154,56 @@ void kvm_mmu_module_exit(void)
 /* rcu list for stack node */
 struct list_head stack_list;
 
-
-int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
+int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for switch process
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;	
-	spin_lock(&vcpu->kvm->mmu_lock);
-	struct kvm *lab_kvm = vcpu->kvm;
-	int i = 0;
-	for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
-		struct kvm_vcpu *v = lab_kvm->vcpus[i];
-		for_each_shadow_entry(v, (u64)gfn << PAGE_SHIFT, iterator) {
-			if (iterator.level == PT_PAGE_TABLE_LEVEL){
-				if (is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
-					u64 spte = *iterator.sptep;
-					if (perm == LAB_RO) 		 
-						spte &= ~PT_WRITABLE_MASK; // clear 0
-					else if (perm == LAB_WT) 	
-						spte |= PT_WRITABLE_MASK;  // set 1
-					if (mmu_spte_update(iterator.sptep, spte))
-						kvm_flush_remote_tlbs(v->kvm); 
-					break;
-				}	
-			}	
-		}
+	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
+		if (is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
+			u64 spte = *iterator.sptep;
+			if (perm == LAB_RO) 		 
+				spte &= ~PT_WRITABLE_MASK; // clear 0
+			else if (perm == LAB_WT) 	
+				spte |= PT_WRITABLE_MASK;  // set 1
+			if (mmu_spte_update(iterator.sptep, spte))
+				kvm_flush_remote_tlbs(vcpu->kvm); 
+			break;
+		}	
+	}	
+	return 0;
+}
+
+bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
+{
+	gfn_t gfn = addr >> PAGE_SHIFT;
+ 	struct kvm_shadow_walk_iterator iterator;
+	int level = 4;
+	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
+		--level;
 	}
-	spin_unlock(&vcpu->kvm->mmu_lock);
+	return (level == 0); 
+}
+
+int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr)
+{
+	//1 set current vcpu ept entry RO
+	setting_perm_switch(vcpu, addr, LAB_RO);
+	//2 frame has been alloced?
+	struct kvm *lab_kvm = vcpu->kvm;
+	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
+	if (pf_has_alloced(other_vcpu, addr)) 
+		setting_perm_switch(other_vcpu, addr, LAB_RO);
+	return 0;
+}
+int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
+{
+ 	//1 set current vcpu ept entry WT
+	setting_perm_switch(vcpu, addr, LAB_WT);
+	//2 frame has been alloced?
+	struct kvm *lab_kvm = vcpu->kvm;
+	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
+	if (pf_has_alloced(other_vcpu, addr)) 
+		setting_perm_switch(other_vcpu, addr, LAB_WT);
 	return 0;
 }
 

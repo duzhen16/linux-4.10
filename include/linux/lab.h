@@ -27,7 +27,9 @@ struct lab_stack_node
 #define LAB_RO	  1
 #define LAB_WT    2
 
-extern int setting_perms(struct kvm_vcpu *vcpu, gpa_t addr, int perm);
+extern int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm);
+extern int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr);
+extern int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr);
 extern bool found_in_stack_list(gva_t gpa); 
 extern bool iterate_ept(struct kvm_vcpu *vcpu, gpa_t addr);
 extern struct list_head stack_list;
