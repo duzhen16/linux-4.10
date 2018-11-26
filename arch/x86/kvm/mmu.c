@@ -3134,7 +3134,7 @@ static int mmu_alloc_direct_roots(struct kvm_vcpu *vcpu)
 		spin_lock(&vcpu->kvm->mmu_lock);
 		make_mmu_pages_available(vcpu);
 		
-		/*导致了多个vcpu使用同一套EPT
+	 	/*导致了多个vcpu使用同一套EPT */
 		/* This is my lab get root mmu page, each time alloc a new page for each vcpu */
 		sp = kvm_mmu_get_page(vcpu, 0, 0, PT64_ROOT_LEVEL, 1, ACC_ALL);
 		++sp->root_count;
@@ -5158,6 +5158,7 @@ int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for swit
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;	
+	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		if (is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
 			u64 spte = *iterator.sptep;
@@ -5169,7 +5170,8 @@ int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for swit
 				kvm_flush_remote_tlbs(vcpu->kvm); 
 			break;
 		}	
-	}	
+	}
+	spin_unlock(&vcpu->kvm->mmu_lock);	
 	return 0;
 }
 
@@ -5178,9 +5180,11 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 	gfn_t gfn = addr >> PAGE_SHIFT;
  	struct kvm_shadow_walk_iterator iterator;
 	int level = 4;
+	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		--level;
 	}
+	spin_unlock(&vcpu->kvm->mmu_lock);	
 	return (level == 0); 
 }
 
@@ -5191,6 +5195,7 @@ int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr)
 	//2 frame has been alloced?
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
+	// 可能会导致一次误报的产生
 	if (pf_has_alloced(other_vcpu, addr)) 
 		setting_perm_switch(other_vcpu, addr, LAB_RO);
 	return 0;

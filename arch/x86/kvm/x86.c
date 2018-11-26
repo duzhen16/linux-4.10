@@ -6160,9 +6160,7 @@ int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 	list_add_rcu(&(node->l_node), &stack_list);
 	
 	/* setting this entry to read_only */
-	spin_lock(&vcpu->kvm->mmu_lock);
 	setting_perm_ceate(vcpu,node->guest_phys);
-	spin_unlock(&vcpu->kvm->mmu_lock);
 	return 0;
 }
 
@@ -6170,9 +6168,7 @@ int handle_delete_stack(struct kvm_vcpu *vcpu, pid_t pid)
 {
 	struct lab_stack_node * node = my_search(pid); //search info node by pid
 	if (node != NULL) {
-		spin_lock(&vcpu->kvm->mmu_lock);
 		setting_perm_delete(vcpu,node->guest_phys);
-		spin_unlock(&vcpu->kvm->mmu_lock);
 		/* delete stack node from stack_list */
 		struct lab_stack_node *pos;
 		list_for_each_entry_rcu(pos, &stack_list, l_node) {
@@ -6201,14 +6197,10 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 	
 	stacks_on_vcpu[vcpu->vcpu_id] = addr_next;
 	
-	spin_lock(&vcpu->kvm->mmu_lock);
 	setting_perm_switch(vcpu, addr_next, LAB_WT);
-	spin_unlock(&vcpu->kvm->mmu_lock);
 	
 	if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1]) {
-		spin_lock(&vcpu->kvm->mmu_lock);
 		setting_perm_switch(vcpu, addr_prev, LAB_RO);
-		spin_unlock(&vcpu->kvm->mmu_lock);
 	}
 	return 0;
 }
