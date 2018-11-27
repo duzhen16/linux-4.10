@@ -5162,7 +5162,7 @@ int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for swit
 	if (VALID_PAGE(vcpu->arch.mmu.root_hpa)) {
 		spin_lock(&vcpu->kvm->mmu_lock);
 		for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-			if (iterator.level == 1 && is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
+			if (iterator.sptep != NULL && is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
 				u64 spte = *iterator.sptep;
 				if (perm == LAB_RO) 		 
 					spte &= ~PT_WRITABLE_MASK; // clear 0
@@ -5186,10 +5186,10 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 	int level = 4;
 	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-		if (!is_shadow_present_pte(*iterator.sptep)) 
+		if (iterator.sptep == NULL || !is_shadow_present_pte(*iterator.sptep)) 
 			break;
 		else
-		--level;
+			--level;
 	}
 	spin_unlock(&vcpu->kvm->mmu_lock);
 	return (level == 0); 
