@@ -5183,15 +5183,11 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
  	struct kvm_shadow_walk_iterator iterator;
-	int level = 4;
-	if (VALID_PAGE(vcpu->arch.mmu.root_hpa)) {
-		spin_lock(&vcpu->kvm->mmu_lock);
-		for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-			--level;
-		}
-		spin_unlock(&vcpu->kvm->mmu_lock);	
-	} else
-		printk("LAB : IN_VALID_PAGE(vcpu->arch.mmu.root_hpa) in pf_has_alloced()");
+	shadow_walk_init(&(iterator), vcpu, (u64)gfn << PAGE_SHIFT);	
+	shadow_walk_okay(&(iterator));	
+	printk("LAB : other root_hpa is %lx\n", iterator.shadow_addr);
+	if (!iterator.sptep)
+		printk("LAB : NULL spetp\n");
 	return (level == 0); 
 }
 
@@ -5203,8 +5199,8 @@ int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr)
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
 	// 可能会导致一次误报的产生
-	//if (pf_has_alloced(other_vcpu, addr)) 
-	setting_perm_switch(other_vcpu, addr, LAB_RO);
+	pf_has_alloced(other_vcpu, addr));
+	//setting_perm_switch(other_vcpu, addr, LAB_RO);
 	return 0;
 }
 int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
@@ -5215,7 +5211,7 @@ int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
 	//if (pf_has_alloced(other_vcpu, addr)) 
-	setting_perm_switch(other_vcpu, addr, LAB_WT);
+	//setting_perm_switch(other_vcpu, addr, LAB_WT);
 	return 0;
 }
 
