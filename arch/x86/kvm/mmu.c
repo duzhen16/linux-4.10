@@ -2116,11 +2116,12 @@ static void clear_sp_write_flooding_count(u64 *spte)
 
 	__clear_sp_write_flooding_count(sp);
 }
+
 // 这是修改过的，原本的函数在kvm_x86_ops.c里进行了备份
 static struct kvm_mmu_page *kvm_mmu_get_page(struct kvm_vcpu *vcpu,
 					     gfn_t gfn,
-					     gva_t gaddr,
-					     unsigned level,
+					     gva_t gaddr,   	//起始地址
+					     unsigned level,	//EPT页表页等级
 					     int direct,
 					     unsigned access)
 {
@@ -5161,7 +5162,7 @@ int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for swit
 	if (VALID_PAGE(vcpu->arch.mmu.root_hpa)) {
 		spin_lock(&vcpu->kvm->mmu_lock);
 		for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-			if (is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
+			if (iterator.level == 1 && is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
 				u64 spte = *iterator.sptep;
 				if (perm == LAB_RO) 		 
 					spte &= ~PT_WRITABLE_MASK; // clear 0
@@ -5202,8 +5203,8 @@ int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr)
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
 	// 可能会导致一次误报的产生
-	if (pf_has_alloced(other_vcpu, addr)) 
-		setting_perm_switch(other_vcpu, addr, LAB_RO);
+	//if (pf_has_alloced(other_vcpu, addr)) 
+	setting_perm_switch(other_vcpu, addr, LAB_RO);
 	return 0;
 }
 int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
@@ -5213,8 +5214,8 @@ int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 	//2 frame has been alloced?
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
-	if (pf_has_alloced(other_vcpu, addr)) 
-		setting_perm_switch(other_vcpu, addr, LAB_WT);
+	//if (pf_has_alloced(other_vcpu, addr)) 
+	setting_perm_switch(other_vcpu, addr, LAB_WT);
 	return 0;
 }
 
