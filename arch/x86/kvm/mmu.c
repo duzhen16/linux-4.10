@@ -5169,6 +5169,7 @@ int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for swit
 				spte &= ~PT_WRITABLE_MASK; // clear 0
 			else if (perm == LAB_WT) 	
 				spte |= PT_WRITABLE_MASK;  // set 1
+			printk("LAB : iterator.sptep is %p, spte is %lX\n",iterator.sptep, spte);
 			if (mmu_spte_update(iterator.sptep, spte))
 				kvm_flush_remote_tlbs(vcpu->kvm); 
 			break;
