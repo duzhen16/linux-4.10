@@ -5155,7 +5155,7 @@ void kvm_mmu_module_exit(void)
 /* rcu list for stack node */
 struct list_head stack_list;
 
-int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for switch process
+int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
@@ -5169,8 +5169,8 @@ int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm) // for swit
 				spte &= ~PT_WRITABLE_MASK; // clear 0
 			else if (perm == LAB_WT) 	
 				spte |= PT_WRITABLE_MASK;  // set 1
-			printk("LAB : iterator.sptep is %p, spte is %lX\n",iterator.sptep, spte);
-			if (mmu_spte_update(iterator.sptep, spte))
+
+			if (is_shadow_present_pte(spte) && mmu_spte_update(iterator.sptep, spte))
 				kvm_flush_remote_tlbs(vcpu->kvm); 
 			break;
 		}	
@@ -5198,25 +5198,36 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	//1 set current vcpu ept entry RO
-	setting_perm_switch(vcpu, addr, LAB_RO);
+	general_setting_perm(vcpu, addr, LAB_RO);
 	//2 frame has been alloced?
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
 	// 可能会导致一次误报的产生
 	if (pf_has_alloced(other_vcpu, addr))
-		setting_perm_switch(other_vcpu, addr, LAB_RO);
+		general_setting_perm(other_vcpu, addr, LAB_RO);
 	return 0;
 }
 int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 {
  	//1 set current vcpu ept entry WT
-	setting_perm_switch(vcpu, addr, LAB_WT);
+	general_setting_perm(vcpu, addr, LAB_WT);
 	//2 frame has been alloced?
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
 	if (pf_has_alloced(other_vcpu, addr)) 
-		setting_perm_switch(other_vcpu, addr, LAB_WT);
+		general_setting_perm(other_vcpu, addr, LAB_WT);
 	return 0;
+}
+
+int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
+{
+	// 1 setting perm to this vcpu
+	general_setting_perm(vcpu, addr, perm);
+	// 2 setting RO to other vcpu
+	struct kvm *lab_kvm = vcpu->kvm;
+	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
+	if (pf_has_alloced(other_vcpu, addr)) 
+		general_setting_perm(other_vcpu, addr, LAB_RO);
 }
 
 bool iterate_ept(struct kvm_vcpu *vcpu, gpa_t addr) 
