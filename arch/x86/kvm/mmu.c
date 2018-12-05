@@ -5186,7 +5186,8 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 	int level = 4;
 	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-		if (iterator.sptep == NULL) 
+		printk("level is %d \n", level);
+		if (!is_shadow_present_pte(*iterator.sptep)) 
 			break;
 		else
 			--level;
