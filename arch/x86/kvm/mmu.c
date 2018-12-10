@@ -3546,6 +3546,8 @@ check_hugepage_cache_consistency(struct kvm_vcpu *vcpu, gfn_t gfn, int level)
 	return kvm_mtrr_check_gfn_range_consistency(vcpu, gfn, page_num);
 }
 
+int detect_enable = 1;
+
 static int tdp_page_fault(struct kvm_vcpu *vcpu, gva_t gpa, u32 error_code,
 			  bool prefault)
 {
@@ -3559,7 +3561,7 @@ static int tdp_page_fault(struct kvm_vcpu *vcpu, gva_t gpa, u32 error_code,
 	bool map_writable;
 
 	/* lab: write to other process' stack, it's an attack */
-	if (write != 0 && found_in_stack_list(gpa)) 
+	if (detect_enable && write != 0 && found_in_stack_list(gpa)) 
 		printk("LAB : ATTACK occured at %llx\n", gpa);
 
 	MMU_WARN_ON(!VALID_PAGE(vcpu->arch.mmu.root_hpa));
@@ -5186,7 +5188,6 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 	int level = 4;
 	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-		//printk("level is %d\n", level);
 		if (!is_shadow_present_pte(*iterator.sptep)) 
 			break;
 		else
@@ -5196,7 +5197,7 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 	return (level == 0); 
 }
 
-int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr)
+int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	//1 set current vcpu ept entry RO
 	general_setting_perm(vcpu, addr, LAB_RO);
@@ -5204,7 +5205,9 @@ int setting_perm_ceate(struct kvm_vcpu *vcpu, gpa_t addr)
 	struct kvm *lab_kvm = vcpu->kvm;
 	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
 	// 可能会导致一次误报的产生
+	detect_enable = 0;
 	tdp_page_fault(other_vcpu, addr, 2, 0);
+	detect_enable = 1;
 	general_setting_perm(other_vcpu, addr, LAB_RO);
 	return 0;
 }

@@ -6160,7 +6160,7 @@ int handle_create_stack(struct kvm_vcpu *vcpu, pid_t pid, gpa_t addr)
 	list_add_rcu(&(node->l_node), &stack_list);
 	
 	/* setting this entry to read_only */
-	setting_perm_ceate(vcpu,node->guest_phys);
+	setting_perm_create(vcpu,node->guest_phys);
 	return 0;
 }
 
