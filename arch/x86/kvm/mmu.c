@@ -5224,13 +5224,8 @@ int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 
 int setting_perm_switch(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
-	// 1 setting perm to this vcpu
 	general_setting_perm(vcpu, addr, perm);
-	// 2 setting RO to other vcpu
-	// struct kvm *lab_kvm = vcpu->kvm;
-	// struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
-	// if (pf_has_alloced(other_vcpu, addr)) 
-	// 	general_setting_perm(other_vcpu, addr, LAB_RO);
+	return 0;
 }
 
 bool iterate_ept(struct kvm_vcpu *vcpu, gpa_t addr) 

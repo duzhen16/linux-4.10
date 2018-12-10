@@ -6199,9 +6199,9 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 	
 	setting_perm_switch(vcpu, addr_next, LAB_WT);
 	
-	if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1]) {
+	//if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1]) {
 		setting_perm_switch(vcpu, addr_prev, LAB_RO);
-	}
+	//}
 	return 0;
 }
 
