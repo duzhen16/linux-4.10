@@ -3572,10 +3572,14 @@ static int tdp_page_fault(struct kvm_vcpu *vcpu, gva_t gpa, u32 error_code,
 	r = mmu_topup_memory_caches(vcpu);
 	if (r)
 		return r;
-
+	/* 
 	force_pt_level = !check_hugepage_cache_consistency(vcpu, gfn,
 							   PT_DIRECTORY_LEVEL); // == 2
 	level = mapping_level(vcpu, gfn, &force_pt_level);
+	*/	
+	force_pt_level = true;
+	level = 1;
+
 	if (likely(!force_pt_level)) {
 		if (level > PT_DIRECTORY_LEVEL &&
 		    !check_hugepage_cache_consistency(vcpu, gfn, level))
