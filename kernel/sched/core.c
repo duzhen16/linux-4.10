@@ -93,7 +93,7 @@
 
 DEFINE_MUTEX(sched_domains_mutex);
 DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
-EXPORT_PER_CPU_SYMBOL(runqueues)
+EXPORT_PER_CPU_SYMBOL(runqueues);
 
 static void update_rq_clock_task(struct rq *rq, s64 delta);
 
