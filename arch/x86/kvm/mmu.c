@@ -5203,26 +5203,23 @@ bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
 
 int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 {
-	//1 set current vcpu ept entry RO
-	general_setting_perm(vcpu, addr, LAB_RO);
-	//2 frame has been alloced?
-	struct kvm *lab_kvm = vcpu->kvm;
-	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
-	// 可能会导致一次误报的产生
 	detect_enable = 0;
-	tdp_page_fault(other_vcpu, addr, 2, 0);
+	int i = 0;
+	for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
+		struct kvm_vcpu *v = lab_kvm->vcpus[i];
+		tdp_page_fault(v, addr, 2, 0);
+		general_setting_perm(v, addr, LAB_RO);
+	}
 	detect_enable = 1;
-	general_setting_perm(other_vcpu, addr, LAB_RO);
 	return 0;
 }
 int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 {
- 	//1 set current vcpu ept entry WT
-	general_setting_perm(vcpu, addr, LAB_WT);
-	//2 frame has been alloced?
-	struct kvm *lab_kvm = vcpu->kvm;
-	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
-	general_setting_perm(other_vcpu, addr, LAB_WT);
+ 	int i = 0;
+	for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
+		struct kvm_vcpu *v = lab_kvm->vcpus[i];
+		general_setting_perm(v, addr, LAB_WT);
+	}
 	return 0;
 }
 
