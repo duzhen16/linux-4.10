@@ -5205,6 +5205,7 @@ int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	detect_enable = 0;
 	int i = 0;
+	struct kvm *lab_kvm = vcpu->kvm;
 	for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
 		struct kvm_vcpu *v = lab_kvm->vcpus[i];
 		tdp_page_fault(v, addr, 2, 0);
@@ -5216,6 +5217,7 @@ int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 {
  	int i = 0;
+	struct kvm *lab_kvm = vcpu->kvm;
 	for (; i < atomic_read(&lab_kvm->online_vcpus); ++i) {
 		struct kvm_vcpu *v = lab_kvm->vcpus[i];
 		general_setting_perm(v, addr, LAB_WT);
