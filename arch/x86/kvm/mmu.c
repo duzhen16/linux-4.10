@@ -5220,9 +5220,9 @@ int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
  	// 1 set current vcpu ept entry WT
 	general_setting_perm(vcpu, addr, LAB_WT);
 	// 2 set other vcpu ept entry RO
-	struct kvm *lab_kvm = vcpu->kvm;
-	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
-	general_setting_perm(other_vcpu, addr, LAB_WT);
+	// struct kvm *lab_kvm = vcpu->kvm;
+	// struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
+	// general_setting_perm(other_vcpu, addr, LAB_WT);
 	return 0;
 }
 
