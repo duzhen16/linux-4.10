@@ -6115,8 +6115,6 @@ void kvm_vcpu_deactivate_apicv(struct kvm_vcpu *vcpu)
 
 
 /* xsun LAB code below */
-
-gpa_t stacks_on_vcpu[2] = {0,0};
 #define   STACK_SHIFT     12
 
 bool found_in_stack_list(gva_t gpa) 
@@ -6193,14 +6191,9 @@ int handle_switch_stack(struct kvm_vcpu *vcpu, pid_t pid_prev, pid_t pid_next)
 	struct lab_stack_node * info_next = my_search(pid_next); //search info node by pid
 	if (info_next)
 		addr_next = info_next->guest_phys;
-	
-	stacks_on_vcpu[vcpu->vcpu_id] = addr_next;
-	
+		
 	setting_perm_switch(vcpu, addr_next, LAB_WT);
-	
-	//if (addr_prev != stacks_on_vcpu[0] && addr_prev != stacks_on_vcpu[1]) {
-		setting_perm_switch(vcpu, addr_prev, LAB_RO);
-	//}
+	setting_perm_switch(vcpu, addr_prev, LAB_RO);
 	return 0;
 }
 

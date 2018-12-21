@@ -5185,22 +5185,6 @@ int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 	return 0;
 }
 
-bool pf_has_alloced(struct kvm_vcpu *vcpu, gpa_t addr)
-{
-	gfn_t gfn = addr >> PAGE_SHIFT;
- 	struct kvm_shadow_walk_iterator iterator;
-	int level = 4;
-	spin_lock(&vcpu->kvm->mmu_lock);
-	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
-		if (!is_shadow_present_pte(*iterator.sptep)) 
-			break;
-		else
-			--level;
-	}
-	spin_unlock(&vcpu->kvm->mmu_lock);
-	return (level == 0); 
-}
-
 int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	detect_enable = 0;
@@ -5217,12 +5201,7 @@ int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 }
 int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 {
- 	// 1 set current vcpu ept entry WT
-	general_setting_perm(vcpu, addr, LAB_WT);
-	// 2 set other vcpu ept entry RO
-	// struct kvm *lab_kvm = vcpu->kvm;
-	// struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
-	// general_setting_perm(other_vcpu, addr, LAB_WT);
+	general_setting_perm(vcpu, addr, LAB_WT);	
 	return 0;
 }
 
