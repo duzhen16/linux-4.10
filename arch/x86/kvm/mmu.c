@@ -3051,19 +3051,19 @@ static int nonpaging_map(struct kvm_vcpu *vcpu, gva_t v, u32 error_code,
 	if (handle_abnormal_pfn(vcpu, v, gfn, pfn, ACC_ALL, &r))
 		return r;
 
-	spin_lock(&vcpu->lab_mmu_lock);
+	spin_lock(&vcpu->kvm->mmu_lock);
 	if (mmu_notifier_retry(vcpu->kvm, mmu_seq))
 		goto out_unlock;
 	make_mmu_pages_available(vcpu);
 	if (likely(!force_pt_level))
 		transparent_hugepage_adjust(vcpu, &gfn, &pfn, &level);
 	r = __direct_map(vcpu, write, map_writable, level, gfn, pfn, prefault);
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 
 	return r;
 
 out_unlock:
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 	kvm_release_pfn_clean(pfn);
 	return 0;
 }
@@ -3083,19 +3083,19 @@ static void mmu_free_roots(struct kvm_vcpu *vcpu)
 	     vcpu->arch.mmu.direct_map)) {
 		hpa_t root = vcpu->arch.mmu.root_hpa;
 
-		spin_lock(&vcpu->lab_mmu_lock);
+		spin_lock(&vcpu->kvm->mmu_lock);
 		sp = page_header(root);
 		--sp->root_count;
 		if (!sp->root_count && sp->role.invalid) {
 			kvm_mmu_prepare_zap_page(vcpu->kvm, sp, &invalid_list);
 			kvm_mmu_commit_zap_page(vcpu->kvm, &invalid_list);
 		}
-		spin_unlock(&vcpu->lab_mmu_lock);
+		spin_unlock(&vcpu->kvm->mmu_lock);
 		vcpu->arch.mmu.root_hpa = INVALID_PAGE;
 		return;
 	}
 
-	spin_lock(&vcpu->lab_mmu_lock);
+	spin_lock(&vcpu->kvm->mmu_lock);
 	for (i = 0; i < 4; ++i) {
 		hpa_t root = vcpu->arch.mmu.pae_root[i];
 
@@ -3110,7 +3110,7 @@ static void mmu_free_roots(struct kvm_vcpu *vcpu)
 		vcpu->arch.mmu.pae_root[i] = INVALID_PAGE;
 	}
 	kvm_mmu_commit_zap_page(vcpu->kvm, &invalid_list);
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 	vcpu->arch.mmu.root_hpa = INVALID_PAGE;
 }
 
@@ -3132,27 +3132,27 @@ static int mmu_alloc_direct_roots(struct kvm_vcpu *vcpu)
 	unsigned i;
 
 	if (vcpu->arch.mmu.shadow_root_level == PT64_ROOT_LEVEL) {
-		spin_lock(&vcpu->lab_mmu_lock);
+		spin_lock(&vcpu->kvm->mmu_lock);
 		make_mmu_pages_available(vcpu);
 		
 	 	/*导致了多个vcpu使用同一套EPT */
 		/* This is my lab get root mmu page, each time alloc a new page for each vcpu */
 		sp = kvm_mmu_get_page(vcpu, 0, 0, PT64_ROOT_LEVEL, 1, ACC_ALL);
 		++sp->root_count;
-		spin_unlock(&vcpu->lab_mmu_lock);
+		spin_unlock(&vcpu->kvm->mmu_lock);
 		vcpu->arch.mmu.root_hpa = __pa(sp->spt);
 	} else if (vcpu->arch.mmu.shadow_root_level == PT32E_ROOT_LEVEL) {
 		for (i = 0; i < 4; ++i) {
 			hpa_t root = vcpu->arch.mmu.pae_root[i];
 
 			MMU_WARN_ON(VALID_PAGE(root));
-			spin_lock(&vcpu->lab_mmu_lock);
+			spin_lock(&vcpu->kvm->mmu_lock);
 			make_mmu_pages_available(vcpu);
 			sp = kvm_mmu_get_page(vcpu, i << (30 - PAGE_SHIFT),
 					i << 30, PT32_ROOT_LEVEL, 1, ACC_ALL);
 			root = __pa(sp->spt);
 			++sp->root_count;
-			spin_unlock(&vcpu->lab_mmu_lock);
+			spin_unlock(&vcpu->kvm->mmu_lock);
 			vcpu->arch.mmu.pae_root[i] = root | PT_PRESENT_MASK;
 		}
 		vcpu->arch.mmu.root_hpa = __pa(vcpu->arch.mmu.pae_root);
@@ -3183,13 +3183,13 @@ static int mmu_alloc_shadow_roots(struct kvm_vcpu *vcpu)
 
 		MMU_WARN_ON(VALID_PAGE(root));
 
-		spin_lock(&vcpu->lab_mmu_lock);
+		spin_lock(&vcpu->kvm->mmu_lock);
 		make_mmu_pages_available(vcpu);
 		sp = kvm_mmu_get_page(vcpu, root_gfn, 0, PT64_ROOT_LEVEL,
 				      0, ACC_ALL);
 		root = __pa(sp->spt);
 		++sp->root_count;
-		spin_unlock(&vcpu->lab_mmu_lock);
+		spin_unlock(&vcpu->kvm->mmu_lock);
 		vcpu->arch.mmu.root_hpa = root;
 		return 0;
 	}
@@ -3217,13 +3217,13 @@ static int mmu_alloc_shadow_roots(struct kvm_vcpu *vcpu)
 			if (mmu_check_root(vcpu, root_gfn))
 				return 1;
 		}
-		spin_lock(&vcpu->lab_mmu_lock);
+		spin_lock(&vcpu->kvm->mmu_lock);
 		make_mmu_pages_available(vcpu);
 		sp = kvm_mmu_get_page(vcpu, root_gfn, i << 30, PT32_ROOT_LEVEL,
 				      0, ACC_ALL);
 		root = __pa(sp->spt);
 		++sp->root_count;
-		spin_unlock(&vcpu->lab_mmu_lock);
+		spin_unlock(&vcpu->kvm->mmu_lock);
 
 		vcpu->arch.mmu.pae_root[i] = root | pm_mask;
 	}
@@ -3299,9 +3299,9 @@ static void mmu_sync_roots(struct kvm_vcpu *vcpu)
 
 void kvm_mmu_sync_roots(struct kvm_vcpu *vcpu)
 {
-	spin_lock(&vcpu->lab_mmu_lock);
+	spin_lock(&vcpu->kvm->mmu_lock);
 	mmu_sync_roots(vcpu);
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 }
 EXPORT_SYMBOL_GPL(kvm_mmu_sync_roots);
 
@@ -3599,19 +3599,19 @@ static int tdp_page_fault(struct kvm_vcpu *vcpu, gva_t gpa, u32 error_code,
 	if (handle_abnormal_pfn(vcpu, 0, gfn, pfn, ACC_ALL, &r))
 		return r;
 
-	spin_lock(&vcpu->lab_mmu_lock);
+	spin_lock(&vcpu->kvm->mmu_lock);
 	if (mmu_notifier_retry(vcpu->kvm, mmu_seq))
 		goto out_unlock;
 	make_mmu_pages_available(vcpu);
 	if (likely(!force_pt_level))
 		transparent_hugepage_adjust(vcpu, &gfn, &pfn, &level);
 	r = __direct_map(vcpu, write, map_writable, level, gfn, pfn, prefault);
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 
 	return r;
 
 out_unlock:
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 	kvm_release_pfn_clean(pfn);
 	return 0;
 }
@@ -4466,7 +4466,7 @@ static void kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 	 */
 	mmu_topup_memory_caches(vcpu);
 
-	spin_lock(&vcpu->lab_mmu_lock);
+	spin_lock(&vcpu->kvm->mmu_lock);
 	++vcpu->kvm->stat.mmu_pte_write;
 	kvm_mmu_audit(vcpu, AUDIT_PRE_PTE_WRITE);
 
@@ -4497,7 +4497,7 @@ static void kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 	}
 	kvm_mmu_flush_or_zap(vcpu, &invalid_list, remote_flush, local_flush);
 	kvm_mmu_audit(vcpu, AUDIT_POST_PTE_WRITE);
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 }
 
 int kvm_mmu_unprotect_page_virt(struct kvm_vcpu *vcpu, gva_t gva)
@@ -5165,7 +5165,7 @@ int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
-	spin_lock(&vcpu->lab_mmu_lock);
+	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		if (iterator.sptep == NULL)
 			break;
@@ -5181,7 +5181,7 @@ int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 			break;
 		}	
 	}
-	spin_unlock(&vcpu->lab_mmu_lock);	
+	spin_unlock(&vcpu->kvm->mmu_lock);	
 	return 0;
 }
 
@@ -5215,12 +5215,12 @@ bool iterate_ept(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
-	spin_lock(&vcpu->lab_mmu_lock);
+	spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		if (is_shadow_present_pte(*iterator.sptep)) {
 			printk("LAB : level %d, ptr is %p, content is %llx\n", iterator.level, iterator.sptep, *iterator.sptep);
 		}
 	}
-	spin_unlock(&vcpu->lab_mmu_lock);
+	spin_unlock(&vcpu->kvm->mmu_lock);
 	return true;
 }
