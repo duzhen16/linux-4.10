@@ -206,6 +206,12 @@ struct kvm_mmio_fragment {
 
 struct kvm_vcpu {
 	struct kvm *kvm;
+	
+	/*
+	optimaze the mmu spin lock
+	*/
+	spinlock_t lab_mmu_lock;
+
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	struct preempt_notifier preempt_notifier;
 #endif

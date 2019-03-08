@@ -5348,9 +5348,9 @@ static bool reexecute_instruction(struct kvm_vcpu *vcpu, gva_t cr2,
 	if (vcpu->arch.mmu.direct_map) {
 		unsigned int indirect_shadow_pages;
 
-		spin_lock(&vcpu->kvm->mmu_lock);
+		spin_lock(&vcpu->lab_mmu_lock);
 		indirect_shadow_pages = vcpu->kvm->arch.indirect_shadow_pages;
-		spin_unlock(&vcpu->kvm->mmu_lock);
+		spin_unlock(&vcpu->lab_mmu_lock);
 
 		if (indirect_shadow_pages)
 			kvm_mmu_unprotect_page(vcpu->kvm, gpa_to_gfn(gpa));
