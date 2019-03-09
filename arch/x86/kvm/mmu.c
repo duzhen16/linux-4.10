@@ -5165,7 +5165,7 @@ int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
-	spin_lock(&vcpu->kvm->mmu_lock);
+	// spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		if (iterator.sptep == NULL)
 			break;
@@ -5181,7 +5181,7 @@ int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 			break;
 		}	
 	}
-	spin_unlock(&vcpu->kvm->mmu_lock);	
+	// spin_unlock(&vcpu->kvm->mmu_lock);	
 	return 0;
 }
 
@@ -5189,13 +5189,13 @@ int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	detect_enable = 0;
 	// 1 set current vcpu ept entry RO
-	tdp_page_fault(vcpu, addr, 2, 0);
+	// tdp_page_fault(vcpu, addr, 2, 0);
 	general_setting_perm(vcpu, addr, LAB_RO);
-	// 2 set other vcpu ept entry RO
-	struct kvm *lab_kvm = vcpu->kvm;
-	struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
-	tdp_page_fault(other_vcpu, addr, 2, 0);
-	general_setting_perm(other_vcpu, addr, LAB_RO);
+	// // 2 set other vcpu ept entry RO
+	// struct kvm *lab_kvm = vcpu->kvm;
+	// struct kvm_vcpu *other_vcpu = lab_kvm->vcpus[1 - vcpu->vcpu_id];
+	// tdp_page_fault(other_vcpu, addr, 2, 0);
+	// general_setting_perm(other_vcpu, addr, LAB_RO);
 	detect_enable = 1;
 	return 0;
 }
