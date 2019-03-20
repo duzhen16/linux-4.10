@@ -5160,31 +5160,50 @@ void kvm_mmu_module_exit(void)
 
 /* rcu list for stack node */
 struct list_head stack_list;
-
+/*
 int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
 {
 	gfn_t gfn = addr >> PAGE_SHIFT;
 	struct kvm_shadow_walk_iterator iterator;
-	// spin_lock(&vcpu->kvm->mmu_lock);
+	 spin_lock(&vcpu->kvm->mmu_lock);
 	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
 		if (iterator.sptep == NULL)
 			break;
 		if (is_shadow_present_pte(*iterator.sptep) && is_last_spte(*iterator.sptep, iterator.level)) {
+			u64 ori_sptr = *iterator.sptep;
 			u64 spte = *iterator.sptep;
 			if (perm == LAB_RO) 		 
 				spte &= ~PT_WRITABLE_MASK; // clear 0
 			else if (perm == LAB_WT) 	
 				spte |= PT_WRITABLE_MASK;  // set 1
-
-	//		if (is_shadow_present_pte(spte) && mmu_spte_update(iterator.sptep, spte))
-	//			kvm_flush_remote_tlbs(vcpu->kvm); // change to with range
+			
+			if (is_shadow_present_pte(spte) && mmu_spte_update(iterator.sptep, spte))
+				kvm_flush_remote_tlbs(vcpu->kvm); // change to with range
 			break;
 		}	
 	}
-	// spin_unlock(&vcpu->kvm->mmu_lock);	
+	 spin_unlock(&vcpu->kvm->mmu_lock);	
+	return 0;
+}*/
+
+int general_setting_perm(struct kvm_vcpu *vcpu, gpa_t addr, int perm)
+{
+	gfn_t gfn = addr >> PAGE_SHIFT;
+	struct kvm_shadow_walk_iterator iterator;
+	for_each_shadow_entry(vcpu, (u64)gfn << PAGE_SHIFT, iterator) {
+		if (iterator.sptep == NULL)
+			break;
+		u64 ori_spte = *iterator.sptep;
+		u64 *spte = iterator.sptep;
+		if (perm == LAB_RO) 		 
+			(*spte) &= ~PT_WRITABLE_MASK; // clear 0
+		else if (perm == LAB_WT) 	
+			(*spte) |= PT_WRITABLE_MASK;  // set 1
+		*iterator.sptep = ori_spte;	
+		break;
+	}
 	return 0;
 }
-
 int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 {
 	detect_enable = 0;
@@ -5201,7 +5220,7 @@ int setting_perm_create(struct kvm_vcpu *vcpu, gpa_t addr)
 }
 int setting_perm_delete(struct kvm_vcpu *vcpu, gpa_t addr)
 {
-	general_setting_perm(vcpu, addr, LAB_WT);	
+	//general_setting_perm(vcpu, addr, LAB_WT);	
 	return 0;
 }
 
