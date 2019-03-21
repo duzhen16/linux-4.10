@@ -6311,17 +6311,17 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
 	switch (nr) {
 	/* xSun begin */
 	case LAB_HC_CREATE:
-		handle_create_stack(vcpu,a0,a1);
+	//	handle_create_stack(vcpu,a0,a1);
 		ret = 0;
 		break;
 	
 	case LAB_HC_DELETE:
-		handle_delete_stack(vcpu,a0);
+	//	handle_delete_stack(vcpu,a0);
 		ret = 0;
 		break;
 	
 	case LAB_HC_SWITCH:
-		handle_switch_stack(vcpu,a0,a1);
+	//	handle_switch_stack(vcpu,a0,a1);
 		ret = 0;
 		break;
 	
